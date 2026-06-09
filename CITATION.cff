@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+
+title: "AutoBAG"
+
+message: >
+  If you use this software, please cite it using the metadata below.
+  A Zenodo DOI will be provided when available.
+
+type: software
+
+authors:
+  - given-names: "Clay"
+    family-names: "Caldwell"
+    affiliation: "Syracuse University | U.S. Army ERDC-CHL"
+    email: "wccaldwe@syr.edu"
+    orcid: "https://orcid.org/0009-0004-7608-1852"
+
+
+
+identifiers:
+  - type: url
+    value: "https://github.com/wc-caldwell/WaterDig-AutoBAG"
+    description: GitHub repository
+
+
+
+repository-code: "https://github.com/wc-caldwell/WaterDig-AutoBAG"
+
+url: "https://github.com/wc-caldwell/WaterDig-AutoBAG"
+
+abstract: >
+  This project will develop automated interpolation methods for hydrographic survey point clouds within the U.S. Army eHydro program in an attempt to improve from the default TIN to improve dredging operations across the U.S.
+
+keywords:
+  - research
+  - open-science
+  - reproducibility
+
+license: "GPL-3.0"
+
+version: "0.1.0"
+
+date-released: "2026"

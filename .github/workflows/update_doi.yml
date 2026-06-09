@@ -1,0 +1,57 @@
+name: Update Zenodo DOI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-doi:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Wait for Zenodo to archive release
+        run: sleep 90
+
+      - name: Extract Zenodo record ID from cookiecutter variable
+        run: |
+          ZENODO_URL=""
+          RECORD_ID=$(echo $ZENODO_URL | grep -oE '[0-9]+$')
+
+          if [ -z "$RECORD_ID" ]; then
+            echo "ERROR: Could not extract Zenodo record ID"
+            exit 1
+          fi
+
+          echo "RECORD_ID=$RECORD_ID" >> $GITHUB_ENV
+
+      - name: Fetch DOI from Zenodo API
+        run: |
+          DOI=$(curl -s https://zenodo.org/api/records/$RECORD_ID | jq -r '.doi')
+
+          if [ "$DOI" = "null" ] || [ -z "$DOI" ]; then
+            echo "ERROR: DOI not found in Zenodo record"
+            exit 1
+          fi
+
+          echo "DOI=$DOI" >> $GITHUB_ENV
+          echo "DOI found: $DOI"
+
+      - name: Update README and CITATION
+        run: |
+          sed -i "s|DOI_PENDING|$DOI|g" README.md
+          sed -i "s|DOI_PENDING|$DOI|g" CITATION.cff
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+
+          git add README.md CITATION.cff
+
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update Zenodo DOI"
+
+          git push
