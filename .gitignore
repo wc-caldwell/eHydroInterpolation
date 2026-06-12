@@ -90,3 +90,6 @@ site/
 secrets.yml
 *.key
 *.pem
+# pixi environments
+.pixi/*
+!.pixi/config.toml
