@@ -14,7 +14,7 @@ from pathlib import Path
 import rasterio
 from rasterio.mask import mask
 import numpy as np
-
+import pandas as pd
 
 def extract_single_zip(zipf):
     """Extract a single zip file and remove it after extraction"""
@@ -316,7 +316,8 @@ def decimate_survey_points(survey, tgt_num_pts, reduction_method='median',
     return x, y, z, x_raw, y_raw, z_raw
 
 def validate_bathymetric_surface(surface_tif, x_raw, y_raw, z_raw, 
-                                 output_csv=None, method_name=None):
+                                 output_csv=None, method_name=None,
+                                 moran_sample=None, plot_sample=None):
     """
     Universal validation function - works with any bathymetric surface.
     
@@ -340,9 +341,6 @@ def validate_bathymetric_surface(surface_tif, x_raw, y_raw, z_raw,
     dict
         Summary statistics
     """
-    import pandas as pd
-    import rasterio
-    from pathlib import Path
     
     surface_tif = Path(surface_tif)
     
@@ -445,20 +443,25 @@ def validate_bathymetric_surface(surface_tif, x_raw, y_raw, z_raw,
     valid_true = z_filtered[valid_mask]
     
     rmse = np.sqrt(np.mean(valid_resids**2))
+    nmad = 1.4826 * np.median(abs(valid_resids - np.median(valid_resids)))
     mae = np.mean(np.abs(valid_resids))
     bias = np.mean(valid_resids)
     std_dev = np.std(valid_resids)
     
-    # Bootstrap CI for RMSE
+    # Bootstrap CI for RMSE and NMAD
     n_bootstrap = 1000
     subsample_size = min(10000, n_valid)
     rmse_samples = []
+    nmad_samples = []
     for _ in range(n_bootstrap):
         sample = np.random.choice(valid_resids, size=subsample_size, replace=True)
         rmse_samples.append(np.sqrt(np.mean(sample**2)))
+        nmad_samples.append(1.4826 * np.median(abs(sample - np.median(sample))))
     rmse_ci = np.percentile(rmse_samples, [2.5, 97.5])
     rmse_se = np.std(rmse_samples)
-    
+    nmad_ci = np.percentile(nmad_samples, [2.5, 97.5])
+    nmad_se = np.std(nmad_samples)
+
     # Percentiles
     percentiles = {
         '5th': float(np.percentile(valid_resids, 5)),
@@ -475,6 +478,8 @@ def validate_bathymetric_surface(surface_tif, x_raw, y_raw, z_raw,
     print(f"\nError Metrics:")
     print(f"  RMSE:               {rmse:.3f} ± {rmse_se:.3f} ft")
     print(f"  RMSE 95% CI:        [{rmse_ci[0]:.3f}, {rmse_ci[1]:.3f}] ft")
+    print(f"  NMAD:               {nmad:.3f} ± {nmad_se:.3f} ft")
+    print(f"  NMAD 95% CI:        [{nmad_ci[0]:.3f}, {nmad_ci[1]:.3f}] ft")
     print(f"  MAE:                {mae:.3f} ft")
     print(f"  Bias:               {bias:.3f} ft")
     print(f"  Std Dev:            {std_dev:.3f} ft")
@@ -525,6 +530,14 @@ def validate_bathymetric_surface(surface_tif, x_raw, y_raw, z_raw,
     df.to_csv(output_csv, index=False)
     print(f"\nValidation results saved to: {output_csv}")
     print(f"{'='*60}\n")
+
+    run_line_diagnostics(
+        z_pred = np.array(df.Predicted_Depth),
+        z_true = np.array(df.True_Depth),
+        xy_coords= df[['X', 'Y']].to_numpy(),
+        moran_sample=moran_sample,   # set None to use all points
+        plot_sample=plot_sample,    # set None to plot all points
+        )
     
     return df, stats
 
@@ -540,7 +553,6 @@ def run_line_diagnostics(
     make_plots=True,
     random_state=42,
 ):
-    from sklearn.neighbors import NearestNeighbors
 
     valid = np.isfinite(z_pred) & np.isfinite(z_true) & np.isfinite(xy_coords).all(axis=1)
     y_true = z_true[valid]
@@ -626,7 +638,7 @@ def run_line_diagnostics(
     if np.isfinite(metrics["resid_var_max_min_deciles"]):
         print(f"[E] Residual variance max/min across fitted bins: {metrics['resid_var_max_min_deciles']:.3f}")
 
-    # ---- plots ----
+    # plots 
     if make_plots:
         yt, yp, rp, xp = y_true[idx_p], y_pred[idx_p], resid[idx_p], xy[idx_p]
         fig, axes = plt.subplots(2, 2, figsize=(12, 10), dpi=120)
@@ -670,6 +682,7 @@ def run_line_diagnostics(
     return metrics
 
 def compute_volume(tif_path, polygon_gdf, auth_depth, unit="yd"):
+
     with rasterio.open(tif_path) as src:
         if polygon_gdf.crs != src.crs:
             polygon_gdf = polygon_gdf.to_crs(src.crs)
@@ -685,5 +698,32 @@ def compute_volume(tif_path, polygon_gdf, auth_depth, unit="yd"):
 
     px, py = abs(out_transform.a), abs(out_transform.e)
     volume_ft3 = np.nansum(cut) * px * py
+    
+    # if statement returns posterior lower bound, prediction, and posterior upper bound dredge cut estimates
+    if "GP" in str(tif_path):
+        unc_tif_path = Path(str(tif_path).replace('bathy', 'uncertainty'))
+        with rasterio.open(unc_tif_path) as unc_src:
+            unc_out_image, _ = mask(unc_src, polygon_gdf.geometry.values,
+                                        crop=True, filled=True, nodata=np.nan)
+            unc_data = unc_out_image[0].astype("float64")
+            if unc_src.nodata is not None:
+                unc_data[unc_data == unc_src.nodata] = np.nan
+        
+        # upper bound depth+uncertainty
+        data_up = data + unc_data
+        cut_up = auth_depth - data_up
+        cut_up = np.where(cut_up > 0, cut_up, 0.0)
+        cut_up[np.isnan(data_up)] = 0.0
+        volume_ft3_up = np.nansum(cut_up) * px * py
 
-    return volume_ft3 * 0.3048**3 if unit == "m" else (volume_ft3 / 27.0)
+        # lower bound depth+uncertainty
+        data_low = data - unc_data
+        cut_low = auth_depth - data_low
+        cut_low = np.where(cut_low > 0, cut_low, 0.0)
+        cut_low[np.isnan(data_low)] = 0.0
+        volume_ft3_low = np.nansum(cut_low) * px * py
+
+        return (volume_ft3_up * 0.3048**3, volume_ft3* 0.3048**3, volume_ft3_low * 0.3048**3) if unit == "m" else ((volume_ft3_up / 27.0), (volume_ft3 / 27.0), (volume_ft3_low / 27.0))
+    
+    else:
+        return volume_ft3 * 0.3048**3 if unit == "m" else (volume_ft3 / 27.0)
