@@ -238,7 +238,7 @@ class TIN:
             float(self.y_grid.min()),
             float(self.y_grid.max()),
         ]
-        im = ax.imshow(self.grid_z, origin="upper", extent=extent, cmap="terrain")
+        im = ax.imshow(self.grid_z, origin="upper", extent=extent, cmap="viridis")
         plt.colorbar(im, ax=ax, label="Depth")
         ax.set(xlabel="Easting", ylabel="Northing", title="TIN Interpolation")
         ax.grid(color="white", linestyle="--", linewidth=0.5, alpha=0.3)
