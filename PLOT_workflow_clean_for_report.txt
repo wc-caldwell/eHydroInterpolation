@@ -1,0 +1,224 @@
+# This runs in the csat_env310 environment.
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 13})
+import numpy as np
+from matplotlib.tri import Triangulation, LinearTriInterpolator
+from matplotlib.gridspec import GridSpec
+import time
+import random
+import geopandas as gpd
+from shapely.geometry import Point
+
+def create_TIN_mask(triangulation_in, max_edge_length_in):
+    """
+    THIS IS AI GENERATED. Need to debug and make sure this actually does what I expect of it.
+    Beginning from a Matplotlib triangulation, mask out any triangles with an edge length exceeding some threshold.
+    :param triangulation_in: triangulation using Matplotlib.tri.Triangulation
+    :param max_edge_length_in: the DTM number.
+    :return:
+    """
+    # Get the coordinates of the triangle vertices.
+    triangles = triangulation_in.triangles
+    x_coords = triangulation_in.x[triangles]
+    y_coords = triangulation_in.y[triangles]
+
+    # Calculate edge lengths for each triangle.
+    edge1 = np.sqrt((x_coords[:, 0] - x_coords[:, 1]) ** 2 +
+                    (y_coords[:, 0] - y_coords[:, 1]) ** 2)
+    edge2 = np.sqrt((x_coords[:, 1] - x_coords[:, 2]) ** 2 +
+                    (y_coords[:, 1] - y_coords[:, 2]) ** 2)
+    edge3 = np.sqrt((x_coords[:, 2] - x_coords[:, 0]) ** 2 +
+                    (y_coords[:, 2] - y_coords[:, 0]) ** 2)
+
+    # Find the maximum edge length for each triangle.
+    max_edge_length = np.maximum(np.maximum(edge1, edge2), edge3)
+
+    # Create the mask
+    mask_out = max_edge_length > max_edge_length_in
+    return mask_out
+
+if __name__ == "__main__":
+    which_survey = 'CL_02_UDS_20260305_CS_A'
+    transects_to_plot = list(range(380, 490))
+    epsg = 'EPSG:2269'
+
+    # which_survey = 'MA_18_BOS_20140725_CS_40_FULL'
+    # transects_to_plot = list(range(100, 210))
+    # epsg = 'EPSG:2249'
+
+
+    singlebeam_dir = r'C:\Users\RDCHLRLB\Documents\CSAT\Singlebeam_Interpolation_Accuracy_For_Sean\Synthetic_Singlebeam_Surveys'
+    multibeam_dir = r'C:\Users\RDCHLRLB\Documents\CSAT\Singlebeam_Interpolation_Accuracy_For_Sean\Multibeam_Validation_Points'
+    results_dir = r'C:\Users\RDCHLRLB\Documents\CSAT\Singlebeam_Interpolation_Accuracy_For_Sean\RESULTS_20260709'
+
+    tspace = 200 / 25 # desired spacing is 200 ft. Transects were generated every 25 ft, so we need every 8th transect.
+    pspace = 50 # desired point spacing is 50 ft.
+
+    # Load the data
+    singlebeam_filename = which_survey + '_syntheticSinglebeam.csv'
+    singlebeam_df = pd.read_csv(os.path.join(singlebeam_dir, singlebeam_filename))
+    multibeam_filename = which_survey + '_multibeamValidationData.csv'
+    multibeam_df = pd.read_csv(os.path.join(multibeam_dir, multibeam_filename))
+    multibeam_df['Elevation_ft'] = np.multiply(multibeam_df['Elevation_ft'], -1)
+
+    # Limit the data to a subset of transects for better plotting
+    singlebeam_df = singlebeam_df[singlebeam_df['Transect_ID'].isin(transects_to_plot)].reset_index(drop=True)
+    singlebeam_df['Elevation_ft'] = np.multiply(singlebeam_df['Elevation_ft'], -1)
+    num_transects = max(singlebeam_df['Transect_ID']) - min(singlebeam_df['Transect_ID'])  # how many transects are available in the singlebeam survey?
+
+    # To improve the plot appearance, also limit the extent of the multibeam data.
+    singlebeam_geometry = gpd.points_from_xy(singlebeam_df['X_ft'], singlebeam_df['Y_ft'])
+    singlebeam_df = gpd.GeoDataFrame(singlebeam_df, geometry=singlebeam_geometry, crs=epsg)
+    multibeam_geometry = gpd.points_from_xy(multibeam_df['X_ft'], multibeam_df['Y_ft'])
+    multibeam_df = gpd.GeoDataFrame(multibeam_df, geometry=multibeam_geometry, crs=epsg)
+    nearest = gpd.sjoin_nearest(multibeam_df, singlebeam_df, how="left", max_distance=25, distance_col="distance")
+    multibeam_df = nearest[~np.isnan(nearest['distance'])].reset_index(drop=True)
+    multibeam_df = multibeam_df.rename(columns={'X_ft_left': 'X_ft', 'Y_ft_left': 'Y_ft', 'Elevation_ft_left': 'Elevation_ft'})
+    del(singlebeam_geometry, multibeam_geometry, nearest)
+
+    # Downsample the synthetic singlebeam data to only contain the desired transect spacing.
+    transects_to_use = list(np.arange(min(singlebeam_df['Transect_ID']), min(singlebeam_df['Transect_ID']) + num_transects + 1, tspace))  # transect indices that we will use to achieve the desired spacing
+    transect_id_temp = list(singlebeam_df['Transect_ID'])  # transect ID for each row of the singlebeam dataframe
+    use_row = [(id in transects_to_use) for id in transect_id_temp]
+    singlebeam_df_this_tspace = singlebeam_df[use_row].reset_index(drop=True)
+    del (use_row, transect_id_temp)
+
+    # Remove any points used to create this set of transects from the multibeam validation data.
+    multibeam_df_this_tspace = multibeam_df[~multibeam_df['Used_to_create_transect'].isin(transects_to_use)].reset_index(drop=True)
+
+    # Limit the singlebeam data to a subset of the points
+    along_length_temp = np.array(singlebeam_df_this_tspace['Length_along_transect_ft'])
+    along_length_temp = np.round(along_length_temp)  # some of them are decimals??? I have no clue why Arc did that.
+    use_row = [(np.mod(thislength, pspace) == 0) for thislength in along_length_temp]
+    singlebeam_this_tspace_pspace = singlebeam_df_this_tspace[use_row].reset_index(drop=True)  # this is the final set of points that we will use to create the TIN.
+    del (along_length_temp, use_row)
+
+    # THIS IS MY ORIGINAL TRIANGULATION.
+    # Create the TIN using Matplotlib, then sample it at the validation points.
+    tri = Triangulation(singlebeam_this_tspace_pspace['X_ft'], singlebeam_this_tspace_pspace['Y_ft'])
+    mask = create_TIN_mask(tri, tspace*25*1.5) # maximum edge length is 1.5 times the transect spacing to allow for larger transect spacing at the outside of bends.
+    tri.set_mask(mask)
+    interpolator = LinearTriInterpolator(tri, singlebeam_this_tspace_pspace['Elevation_ft'])
+    interpolated_elevation = interpolator(multibeam_df_this_tspace['X_ft'], multibeam_df_this_tspace['Y_ft']) # interpolate onto the validation points
+    interpolation_error = np.subtract(interpolated_elevation, multibeam_df_this_tspace['Elevation_ft'])
+
+    # Create a plot illustrating the results
+    min_z = min(list(singlebeam_df['Elevation_ft']) + list(multibeam_df['Elevation_ft']))  # colorbar limits
+    max_z = max(list(singlebeam_df['Elevation_ft']) + list(multibeam_df['Elevation_ft']))  # colorbar limits
+
+    myfig = plt.figure(figsize=(10, 14))
+
+    # Create GridSpec with 2 rows and 3 columns
+    gs = GridSpec(3, 2, figure=myfig, hspace=0.3, wspace=0.3)
+
+    # Create axes for maps
+    axes = []
+    for i in range(3):
+        for j in range(2):
+            ax = myfig.add_subplot(gs[i, j])
+            axes.append(ax)
+
+    # Plot the synthetic singlebeam data
+    axes[1].scatter(multibeam_df['X_ft'], multibeam_df['Y_ft'], s=0.5, c='k')  # plot the footprint of the multibeam data
+    mymap = axes[1].scatter(singlebeam_this_tspace_pspace['X_ft'], singlebeam_this_tspace_pspace['Y_ft'], s=2,
+                c=singlebeam_this_tspace_pspace['Elevation_ft'], vmin=min_z, vmax=max_z, cmap='viridis')
+    axes[1].set_title('Synthetic Singlebeam\nSurvey', fontweight='bold')
+    axes[1].set_aspect('equal')
+    axes[1].set_xticklabels([])
+    axes[1].set_yticklabels([])
+    axes[1].tick_params(left=False, bottom=False)
+
+    # Plot the TIN
+    mymap = axes[2].tricontourf(tri, singlebeam_this_tspace_pspace['Elevation_ft'], cmap='viridis', alpha=0.75)
+    axes[2].triplot(tri, color='k', lw=0.2)
+    axes[2].set_title('TIN', fontweight='bold')
+    axes[2].set_aspect('equal')
+    axes[2].set_xticklabels([])
+    axes[2].set_yticklabels([])
+    axes[2].tick_params(left=False, bottom=False)
+
+    # Plot the interpolated elevations
+    # plt.scatter(multibeam_df['X_ft'], multibeam_df['Y_ft'], s=0.5, c='k')  # plot the original multibeam footprint
+    mymap = axes[3].scatter(multibeam_df_this_tspace['X_ft'], multibeam_df_this_tspace['Y_ft'], c=interpolated_elevation,
+                edgecolor=None, s=2, cmap='viridis', vmin=min_z, vmax=max_z)
+    axes[3].set_title('Predicted Bathymetry\n(Using TIN)', fontweight='bold')
+    axes[3].set_aspect('equal')
+    axes[3].set_xticklabels([])
+    axes[3].set_yticklabels([])
+    axes[3].tick_params(left=False, bottom=False)
+
+    # Plot the known elevation data
+    # plt.scatter(multibeam_df['X_ft'], multibeam_df['Y_ft'], s=0.5, c='k')  # original multibeam footprint
+    mymap = axes[0].scatter(multibeam_df_this_tspace['X_ft'], multibeam_df_this_tspace['Y_ft'], s=2,
+                c=multibeam_df_this_tspace['Elevation_ft'], vmin=min_z, vmax=max_z, cmap='viridis')
+    axes[0].set_title('Measured Multibeam\nBathymetry', fontweight='bold')
+    axes[0].set_aspect('equal')
+    axes[0].set_xticklabels([])
+    axes[0].set_yticklabels([])
+    axes[0].tick_params(left=False, bottom=False)
+
+    # Plot the TIN interpolation error
+    # plt.scatter(multibeam_df['X_ft'], multibeam_df['Y_ft'], s=0.5, c='k')  # original multibeam footprint
+    max_error = np.nanmax(np.abs(interpolation_error))
+    mymap2 = axes[4].scatter(multibeam_df_this_tspace['X_ft'], multibeam_df_this_tspace['Y_ft'], s=2, c=interpolation_error, vmin=-1*max_error,
+                vmax=max_error, cmap='PuOr')
+    axes[4].set_title('Interpolation Error', fontweight='bold')
+    axes[4].set_aspect('equal')
+    axes[4].set_xticklabels([])
+    axes[4].set_yticklabels([])
+    axes[4].tick_params(left=False, bottom=False)
+
+    axes[1].set_xlim(axes[0].get_xlim())
+    axes[1].set_ylim(axes[0].get_ylim())
+    axes[2].set_xlim(axes[0].get_xlim())
+    axes[2].set_ylim(axes[0].get_ylim())
+    axes[3].set_xlim(axes[0].get_xlim())
+    axes[3].set_ylim(axes[0].get_ylim())
+    axes[4].set_xlim(axes[0].get_xlim())
+    axes[4].set_ylim(axes[0].get_ylim())
+
+    # create a histogram of the interpolation error
+    cm = plt.cm.get_cmap('PuOr')
+    interpolation_error = np.append(interpolation_error, [-1*max_error, max_error]) # this is just to center the color scheme. You won't be able to see the extra two points on the plot
+    axes[5].hist(interpolation_error, bins=100, edgecolor='black')
+    n, bins, patches = axes[5].hist(interpolation_error, bins=100)
+    bin_centers = 0.5*(bins[:-1] + bins[1:])
+    col = bin_centers-min(bin_centers)
+    col = col / max(col)
+    for c, p in zip(col, patches):
+        p.set_facecolor(cm(c))
+    axes[5].tick_params(axis='y', labelrotation=90)
+    axes[5].set_title('Distribution of\nInterpolation Error', fontweight='bold')
+    axes[5].set_xlabel('Error (ft)', fontweight='bold')
+    axes[5].set_ylabel('Sample count', fontweight='bold')
+    axes[5].yaxis.set_label_position("right")
+    axes[5].yaxis.tick_right()
+    axes[5].set_box_aspect(1)
+
+    # axes[6].scatter(multibeam_df_this_tspace['Dist_to_transect_ft'], np.abs(interpolation_error), s=0.2, c='black')
+    # axes[6].set_title('Interpolation Error as a Function of Distance to Nearest Transect')
+    # axes[6].set_xlabel('Distance to nearest transect (ft)')
+    # axes[6].set_ylabel('|Error| (ft)')
+    # axes[6].set_box_aspect(1)
+
+    plt.tight_layout()
+
+    myfig.subplots_adjust(right=0.75)
+    cbar_ax = myfig.add_axes([0.85, 0.15, 0.03, 0.3])
+    cbar = myfig.colorbar(mymap, cax=cbar_ax)
+    cbar.set_label('Elevation (ft MLLW)', fontweight='bold')
+    cbar.ax.tick_params(rotation=90)
+
+    cbar_ax = myfig.add_axes([0.85, 0.55, 0.03, 0.3])
+    cbar = myfig.colorbar(mymap2, cax=cbar_ax)
+    cbar.set_label('Error (TIN minus measured, ft)', fontweight='bold')
+    cbar.ax.tick_params(rotation=90)
+
+    figure_filename = which_survey + '_tspace_' + str(int(tspace * 25)) + '_pspace_' + str(
+        int(pspace)) + '.png'
+    plt.savefig(os.path.join(results_dir, figure_filename), dpi=300)
+    plt.close(myfig)
+
+    print('Done')

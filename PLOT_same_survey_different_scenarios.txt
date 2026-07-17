@@ -1,0 +1,102 @@
+# This runs in the csat_env310 environment.
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.spatial import Delaunay
+from scipy.interpolate import LinearNDInterpolator
+
+which_survey = 'CL_02_UDS_20260305_CS_A'
+transects_to_plot = list(range(380, 490))
+
+# which_survey = 'MA_18_BOS_20140725_CS_40_FULL'
+# transects_to_plot = list(range(100, 210))
+
+singlebeam_dir = r'C:\Users\RDCHLRLB\Documents\CSAT\Singlebeam_Interpolation_Accuracy_For_Sean\Synthetic_Singlebeam_Surveys'
+multibeam_dir = r'C:\Users\RDCHLRLB\Documents\CSAT\Singlebeam_Interpolation_Accuracy_For_Sean\Multibeam_Validation_Points'
+results_dir = r'C:\Users\RDCHLRLB\Documents\CSAT\Singlebeam_Interpolation_Accuracy_For_Sean\RESULTS_20260709'
+
+transect_spacings_to_plot = [12, 4, 1] # the original transects I created are 25 ft apart, so we can downsample to achieve the other transect spacings.
+point_spacings_to_plot = [4, 20, 100] # the original points I created are 2 ft apart, so we can downsample to achieve the desired point spacing
+
+# Load the data
+singlebeam_filename = which_survey + '_syntheticSinglebeam.csv'
+singlebeam_df = pd.read_csv(os.path.join(singlebeam_dir, singlebeam_filename))
+multibeam_filename = which_survey + '_multibeamValidationData.csv'
+multibeam_df = pd.read_csv(os.path.join(multibeam_dir, multibeam_filename))
+
+# Limit the data to a subset of transects for better plotting
+singlebeam_df = singlebeam_df[singlebeam_df['Transect_ID'].isin(transects_to_plot)].reset_index(drop=True)
+singlebeam_df['Elevation_ft'] = np.multiply(singlebeam_df['Elevation_ft'], -1)
+num_transects = max(singlebeam_df['Transect_ID']) - min(singlebeam_df['Transect_ID'])  # how many transects are available in the singlebeam survey?
+
+fig, axes = plt.subplots(len(transect_spacings_to_plot), len(point_spacings_to_plot), figsize=(6.5, 6.5))
+
+for itspace, tspace in enumerate(transect_spacings_to_plot):  # loop through the different transect spacings
+
+    transects_to_use = list(np.arange(min(singlebeam_df['Transect_ID']), min(singlebeam_df['Transect_ID']) + num_transects + 1, tspace))  # transect indices that we will use to achieve the desired spacing
+
+    # Downsample the synthetic singlebeam data to only contain the desired transect spacing.
+    transect_id_temp = list(singlebeam_df['Transect_ID'])  # transect ID for each row of the singlebeam dataframe
+    use_row = [(id in transects_to_use) for id in transect_id_temp]
+    singlebeam_df_this_tspace = singlebeam_df[use_row].reset_index(drop=True)
+    del (use_row, transect_id_temp)
+
+    # Remove any points used to create this set of transects from the multibeam validation data.
+    multibeam_df_this_tspace = multibeam_df[~multibeam_df['Used_to_create_transect'].isin(transects_to_use)].reset_index(drop=True)
+
+    for ipspace, pspace in enumerate(point_spacings_to_plot):  # loop through the different point spacings
+
+        along_length_temp = np.array(singlebeam_df_this_tspace['Length_along_transect_ft'])
+        along_length_temp = np.round(along_length_temp)  # some of them are decimals??? I have no clue why Arc did that.
+        use_row = [(np.mod(thislength, pspace) == 0) for thislength in along_length_temp]
+        singlebeam_this_tspace_pspace = singlebeam_df_this_tspace[use_row].reset_index(drop=True)  # this is the final set of points that we will use to create the TIN.
+        del (along_length_temp, use_row)
+
+        data_for_scipy = np.column_stack((singlebeam_this_tspace_pspace['X_ft'], singlebeam_this_tspace_pspace['Y_ft']))
+        tri = Delaunay(data_for_scipy)
+        interpolator = LinearNDInterpolator(tri, singlebeam_this_tspace_pspace['Elevation_ft'])
+        interpolated_elevation = interpolator(multibeam_df_this_tspace['X_ft'], multibeam_df_this_tspace['Y_ft'])
+
+        # Get the indices of the first three transects for plotting
+        these_transects = list(singlebeam_this_tspace_pspace['Transect_ID'])
+        these_transects = sorted(list(set(these_transects)))
+        transects_to_plot = these_transects[:3]
+        df_for_plot = singlebeam_this_tspace_pspace[singlebeam_this_tspace_pspace['Transect_ID'].isin(transects_to_plot)].reset_index(drop=True)
+
+        # axes[itspace][ipspace].scatter(multibeam_df_this_tspace['X_ft'], multibeam_df_this_tspace['Y_ft'], s=0.2, c='black')
+        im = axes[itspace][ipspace].scatter(multibeam_df_this_tspace['X_ft'], multibeam_df_this_tspace['Y_ft'], s=0.2,
+                                       c=interpolated_elevation, zorder=1)
+        for transect in transects_to_plot:
+            df_filt = singlebeam_this_tspace_pspace[singlebeam_this_tspace_pspace['Transect_ID'] == transect].reset_index(drop=True)
+            axes[itspace][ipspace].plot(df_filt['X_ft'], df_filt['Y_ft'], linewidth=0.2, c='black', zorder=2)
+        axes[itspace][ipspace].scatter(df_for_plot['X_ft'], df_for_plot['Y_ft'], s=0.4, c='black', zorder=3)
+        axes[itspace][ipspace].set_aspect('equal')
+        axes[itspace][ipspace].set_xticklabels([])
+        axes[itspace][ipspace].set_yticklabels([])
+        axes[itspace][ipspace].tick_params(left=False, bottom=False)
+        # axes[itspace][ipspace].title('T=' + str(tspace*25) + ' ft, P=' + str(pspace) + ' ft')
+
+        if ipspace == 0:
+            axes[itspace][ipspace].set_ylabel(str(tspace * 25) + ' ft', fontsize=11)
+
+        if itspace == 2:
+            axes[itspace][ipspace].set_xlabel(str(pspace) + ' ft', fontsize=11)
+
+        print('debug')
+
+fig.supxlabel('Point spacing on transect', fontsize=13, fontweight='bold')
+fig.supylabel('Transect spacing', fontsize=13, fontweight='bold')
+plt.tight_layout()
+
+fig.subplots_adjust(right=0.83)
+cbar_ax = fig.add_axes([0.85, 0.15, 0.03, 0.5])
+cbar = fig.colorbar(im, cax=cbar_ax)
+cbar.set_label('Elevation (ft MLLW)')
+cbar.ax.tick_params(rotation=90)
+
+figure_filename = singlebeam_filename.replace('.csv', '') + '_various_scenarios.png'
+plt.savefig(os.path.join(results_dir, figure_filename), dpi=300)
+plt.close(fig)
+
+print('debug')

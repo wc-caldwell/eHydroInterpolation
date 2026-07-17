@@ -1,4 +1,5 @@
 *.geojson
+desdomna_shoal*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

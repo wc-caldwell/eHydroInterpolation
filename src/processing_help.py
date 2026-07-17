@@ -692,7 +692,7 @@ def compute_volume(tif_path, polygon_gdf, auth_depth, unit="yd"):
         if src.nodata is not None:
             data[data == src.nodata] = np.nan
 
-    cut = auth_depth - data
+    cut = auth_depth + data
     cut = np.where(cut > 0, cut, 0.0)
     cut[np.isnan(data)] = 0.0
 
