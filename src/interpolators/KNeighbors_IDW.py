@@ -51,6 +51,7 @@ class IDW:
         "surveyId",
         "survey_path",
         "survey_boundary",
+        "echosounder",
         "grid_res",
         "plot_outputs",
         "coordinates",
@@ -77,6 +78,7 @@ class IDW:
         y,
         z,
         survey_boundary,
+        echosounder,
         grid_res=10.0,
         power=2,
         n_neighbors=32,
@@ -87,6 +89,7 @@ class IDW:
         self.survey_path = survey_path
         self.survey_boundary = survey_boundary
         self._crs = self.survey_boundary.crs
+        self.echosounder = echosounder
         self.grid_res = grid_res
 
         self.power = power
@@ -202,7 +205,7 @@ class IDW:
         """Write COG raster."""
         if output_path is None:
             output_path = (
-                self.survey_path / f"IDW_bathy.tif"
+                self.survey_path / f"{self.echosounder}_IDW_bathy.tif"
             )
         else:
             output_path = Path(output_path)

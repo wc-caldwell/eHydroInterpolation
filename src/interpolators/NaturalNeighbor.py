@@ -22,6 +22,7 @@ class NaturalNeighbor:
         "surveyId",
         "survey_path",
         "survey_boundary",
+        "echosounder",
         "grid_res",
         "plot_outputs",
         "coordinates",
@@ -46,6 +47,7 @@ class NaturalNeighbor:
         y,
         z,
         survey_boundary,
+        echosounder,
         grid_res=10.0,
         plot_outputs=False,
         n_jobs=-1,
@@ -54,6 +56,7 @@ class NaturalNeighbor:
         self.survey_path = survey_path
         self.survey_boundary = survey_boundary
         self._crs = self.survey_boundary.crs  # Cache CRS
+        self.echosounder = echosounder
         self.grid_res = grid_res
         self.plot_outputs = plot_outputs
         self.n_jobs = n_jobs if n_jobs != -1 else multiprocessing.cpu_count()
@@ -165,7 +168,7 @@ class NaturalNeighbor:
     def _write_output(self, output_path=None):
         """Write COG raster with CV metadata."""
         if output_path is None:
-            output_path = self.survey_path / f"NaturalNeighbor_bathy.tif"
+            output_path = self.survey_path / f"{self.echosounder}_NaturalNeighbor_bathy.tif"
         else:
             output_path = Path(output_path)
         
