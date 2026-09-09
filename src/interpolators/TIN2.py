@@ -15,7 +15,6 @@ from joblib import Parallel, delayed
 
 # TODO: replace the survey_boundary argument/variable with an argument/variable that will just read in a geodataframe
 
-
 class TIN:
     """Generate TIN bathymetric surfaces with optimized performance."""
 
@@ -38,7 +37,7 @@ class TIN:
         "_crs",
         "_fold_spacing",
         "n_jobs",
-        "max_edge_length",
+        "max_edge_length"
     ]
 
     def __init__(
