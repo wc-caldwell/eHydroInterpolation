@@ -254,6 +254,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/00/b7/e3bf5133d697a08128598c8d0abc5e16377b51465a33756de24fa7dee953/aiosqlite-0.22.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/b5/d1a4dca5fe9ce5b083ee79ac272c6ffe8199f98910b702eecb310a5d060d/async_retriever-0.19.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/ad/56/2a3560605f73ceae93e3522fac1702de15169cdaecbd145be4f7616c994c/autorank-1.3.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/e9/5f/c9ae9b86de6681401a2a57510eb581fd593d0897e7e43b4b1c1eede87b20/baycomp-1.0.3.tar.gz
       - pypi: https://files.pythonhosted.org/packages/88/c6/92fcd42f1ba33e1184263f25bfabf3d27c383410470f169e4b8163bf9c17/beautifulsoup4-4.15.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/80/56/60547f7801b97c67e97491dc3d9ade9fbccbd0325058fd3dfcb2f5d98d90/cattrs-26.1.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/78/2d/7fa73dfa841b5ac06c7b8855cfc18622132e365f5b81d02230333ff26e9e/cffi-2.0.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
@@ -570,6 +572,18 @@ packages:
   version: 26.1.0
   sha256: c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
   requires_python: '>=3.9'
+- pypi: https://files.pythonhosted.org/packages/ad/56/2a3560605f73ceae93e3522fac1702de15169cdaecbd145be4f7616c994c/autorank-1.3.0-py3-none-any.whl
+  name: autorank
+  version: 1.3.0
+  sha256: 9ff2be6367e8c64f1ac25c054f2dbbeea365ab8ef692e18744b1e9726ea45146
+  requires_dist:
+  - numpy
+  - pandas>=2.0.3
+  - statsmodels>=0.14.0
+  - scipy>=1.10.1
+  - matplotlib>=3.7.2
+  - baycomp>=1.0.3
+  - jinja2>=3.1.2
 - conda: https://conda.anaconda.org/conda-forge/linux-64/backports.zstd-1.6.0-py312h90b7ffd_0.conda
   sha256: 95b3d6d44c17c4061db703289f39915646e455f75f0c8c9d949bf081d2e61579
   md5: 55811da425538da800b89c0c588652fa
@@ -584,6 +598,15 @@ packages:
   - pkg:pypi/backports-zstd?source=compressed-mapping
   size: 239892
   timestamp: 1781450817988
+- pypi: https://files.pythonhosted.org/packages/e9/5f/c9ae9b86de6681401a2a57510eb581fd593d0897e7e43b4b1c1eede87b20/baycomp-1.0.3.tar.gz
+  name: baycomp
+  version: 1.0.3
+  sha256: 32b25ad7b16d5b251ddb9f6110a32d7b3953b987096da1d25ef277935d25daec
+  requires_dist:
+  - matplotlib>=2.1.2
+  - numpy>=1.13.1
+  - scipy>=0.19.1
+  requires_python: '>=3'
 - pypi: https://files.pythonhosted.org/packages/88/c6/92fcd42f1ba33e1184263f25bfabf3d27c383410470f169e4b8163bf9c17/beautifulsoup4-4.15.0-py3-none-any.whl
   name: beautifulsoup4
   version: 4.15.0
