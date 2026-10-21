@@ -3,18 +3,24 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     name: Build Notebook Container
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
+
       - name: Build with repo2docker
         uses: jupyterhub/repo2docker-action@master
         with:
           DOCKER_USERNAME: ${{ github.actor }}
           DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_REGISTRY: ghcr.io
-          IMAGE_NAME: ${{ github.repository_owner }}/myproject
+          IMAGE_NAME: ${{ github.repository_owner }}/eHydroInterpolation
           ADDITIONAL_TAG: ${{ github.sha }}

@@ -1,0 +1,54 @@
+nohup: ignoring input
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+AK_08_WES_20160318_CS_FULL -> AK_08_WES_20160318_CS (AK_08_WES_20160318_CS.gdb)
+BR_02_JEC_20260211_CS -> BR_02_JEC_20260211_CS (BR_02_JEC_20260211_CS.gdb)
+CB_02_CB2_20260202_CS_A -> CB_02_CB2_20260202_CS (CB_02_CB2_20260202_CS.gdb)
+CC_05_HLQ_20260205_XC -> CC_05_HLQ_20260205_XC (CC_05_HLQ_20260205_XC.gdb)
+CH_02_CHL_20220210_CS_FULL -> CH_02_CHL_20220210_CS (CH_02_CHL_20220210_CS.gdb)
+CL_02_UDS_20260305_CS_A -> CL_02_UDS_20260305_CS (CL_02_UDS_20260305_CS.gdb)
+CR_ND_BL5_20220301_CS_102_103_SORT -> CR_ND_BL5_20220301_CS_102_103_SORT (CR_ND_BL5_20220301_CS_102_103_SORT.gdb)
+DU_02_EWW_20260211_CS_E_12_6_1_67 -> DU_02_EWW_20260211_CS_E_12_6_1_67 (DU_02_EWW_20260211_CS_E_12_6_1_67.gdb)
+FR_6A_SCL_20240401_CS -> FR_6A_SCL_20240401_CS (FR_6A_SCL_20240401_CS.gdb)
+GH_03_COC_20251202_CS_E_5_13_439 -> GH_03_COC_20251202_CS_E_5_13_439 (GH_03_COC_20251202_CS_E_5_13_439.gdb)
+GW_68_CSL_20250909_CS_3X3_A -> GW_68_CSL_20250909_CS_3X3 (GW_68_CSL_20250909_CS_3X3.gdb)
+IL_LA_MVR_20251118_CS_14001420_25D_A -> IL_LA_MVR_20251118_CS_14001420_25D (IL_LA_MVR_20251118_CS_14001420_25D.gdb)
+JH_01_JAH_20240516_CS_2024_153_01_HF -> JH_01_JAH_20240516_CS_2024_153_01_HF (JH_01_JAH_20240516_CS_2024_153_01_HF.gdb)
+JR_09_RDT_20251209_CS -> JR_09_RDT_20251209_CS (JR_09_RDT_20251209_CS.gdb)
+LA_01_LBC_20250624_CS_FULL -> LA_01_LBC_20250624_CS (LA_01_LBC_20250624_CS.gdb)
+LA_11_SDH_20251105_CS_FULL -> LA_11_SDH_20251105_CS (LA_11_SDH_20251105_CS.gdb)
+LB_03_TOL_20250814_BD_340TO430 -> LB_03_TOL_20250814_BD_340TO430 (LB_03_TOL_20250814_BD_340TO430.gdb)
+LB_18_OSW_20250820_CS_ALL -> LB_18_OSW_20250820_CS_ALL (LB_18_OSW_20250820_CS_ALL.gdb)
+LD_21_MVR_20250923_DS_32453253_25A_FULL -> LD_21_MVR_20250923_DS_32453253_25A (LD_21_MVR_20250923_DS_32453253_25A.gdb)
+MA_18_BOS_20140725_CS_40_FULL -> MA_18_BOS_20140725_CS_40 (MA_18_BOS_20140725_CS_40.gdb)
+MD_72_SB3_20260211_CS_3X3 -> MD_72_SB3_20260211_CS_3X3 (MD_72_SB3_20260211_CS_3X3.gdb)
+ME_57_POR_20240314_XC_010_FULL -> ME_57_POR_20240314_XC_010 (ME_57_POR_20240314_XC_010.gdb)
+MH_01_MIH_20240610_CS_2024_147_01_HF_A -> MH_01_MIH_20240610_CS_2024_147_01_HF (MH_01_MIH_20240610_CS_2024_147_01_HF.gdb)
+MO_02_LMR_20250520_CS_181_181_8_SORT_A -> MO_02_LMR_20250520_CS_181_181_8_SORT (MO_02_LMR_20250520_CS_181_181_8_SORT.gdb)
+NY_02_ANC_20250416_CS_5570_60_FULL -> NY_02_ANC_20250416_CS_5570_60 (NY_02_ANC_20250416_CS_5570_60.gdb)
+OH_HD_GRO_20250312_CS_3412_3422_SORT_A -> OH_HD_GRO_20250312_CS_3412_3422_SORT (OH_HD_GRO_20250312_CS_3412_3422_SORT.gdb)
+PS_20_PHI_20240603_XC_FULL -> PS_20_PHI_20240603_XC (PS_20_PHI_20240603_XC.gdb)
+SJ_01_SJH_20240610_CS_2024_170_01_HF -> SJ_01_SJH_20240610_CS_2024_170_01_HF (SJ_01_SJH_20240610_CS_2024_170_01_HF.gdb)
+TH_03_TBC_20251216_CS_2026038_HF_A -> TH_03_TBC_20251216_CS_2026_038_HF (TH_03_TBC_20251216_CS_2026_038_HF.gdb)
+WW_01_MNA_20201004_CS_ICE -> WW_01_MNA_20201004_CS_ICE (WW_01_MNA_20201004_CS_ICE.gdb)
+CC_05_HLQ_20260205_XC
+Processing 33 chunks using 20 cores...
+[Parallel(n_jobs=20)]: Done   8 out of  33 | elapsed:   18.8s remaining:   58.8s
+[Parallel(n_jobs=20)]: Done  15 out of  33 | elapsed:   26.0s remaining:   31.2s
+[Parallel(n_jobs=20)]: Done  22 out of  33 | elapsed:   32.2s remaining:   16.1s
+[Parallel(n_jobs=20)]: Done  29 out of  33 | elapsed:   36.7s remaining:    5.1s
+[Parallel(n_jobs=20)]: Done  33 out of  33 | elapsed: 217.0min finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+Exported: /mnt/teamgroup/AutoDBM/Public/CC_05_HLQ_20260205_XC/MBES_TIN_bathy.tif
+Processing 33 chunks using 20 cores...
+[Parallel(n_jobs=20)]: Done   8 out of  33 | elapsed:    4.5s remaining:   14.0s
+[Parallel(n_jobs=20)]: Done  15 out of  33 | elapsed:    7.1s remaining:    8.5s
+[Parallel(n_jobs=20)]: Done  22 out of  33 | elapsed:    8.5s remaining:    4.2s
+[Parallel(n_jobs=20)]: Done  29 out of  33 | elapsed: 30.2min remaining:  4.2min
+[Parallel(n_jobs=20)]: Done  33 out of  33 | elapsed: 78.5min finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+Exported: /mnt/teamgroup/AutoDBM/Public/CC_05_HLQ_20260205_XC/SBES_TIN_bathy.tif
+Processing 33 chunks using 20 cores...
+[Parallel(n_jobs=20)]: Done   8 out of  33 | elapsed:    4.4s remaining:   13.9s
+[Parallel(n_jobs=20)]: Done  15 out of  33 | elapsed:    7.0s remaining:    8.4s
+[Parallel(n_jobs=20)]: Done  22 out of  33 | elapsed:    8.4s remaining:    4.2s
+[Parallel(n_jobs=20)]: Done  29 out of  33 | elapsed: 29.9min remaining:  4.1min

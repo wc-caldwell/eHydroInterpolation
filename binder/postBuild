@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+cd "${REPO_DIR}"
+
+pixi config set --local detached-environments "${CONDA_DIR}/pixi-envs"
+
+pixi install -a
+
+pixi run --frozen -e default python -m ipykernel install --prefix "${NB_PYTHON_PREFIX}" --name pixi-py --display-name "Python (pixi py)"
+
+pixi clean cache --yes

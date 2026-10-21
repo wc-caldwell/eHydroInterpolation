@@ -1,4 +1,9 @@
 import os
+from types import SimpleNamespace
+import requests
+from urllib.parse import unquote, urlparse
+from pygeoogc import ArcGISRESTful
+import pygeoutils as geoutils
 from pygeohydro import EHydro
 from concurrent.futures import ThreadPoolExecutor
 from zipfile import ZipFile, BadZipFile
@@ -15,6 +20,25 @@ import rasterio
 from rasterio.mask import mask
 import numpy as np
 import pandas as pd
+
+def download_single_zip(url, data_dir):
+    """Download one survey zip into data_dir. Skips files already downloaded."""
+    fname = data_dir / unquote(Path(urlparse(url).path).name)
+    if fname.exists() and fname.stat().st_size > 0:
+        return fname, True
+    tmp = fname.with_name(fname.name + ".part")
+    try:
+        with requests.get(url, stream=True, timeout=300) as r:
+            r.raise_for_status()
+            with open(tmp, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1 << 20):
+                    f.write(chunk)
+        tmp.rename(fname)
+        return fname, True
+    except Exception as ex:
+        tmp.unlink(missing_ok=True)
+        print(f"Failed: {url} ({ex})")
+        return fname, False
 
 def extract_single_zip(zipf):
     """Extract a single zip file and remove it after extraction"""
@@ -53,104 +77,44 @@ def retrieve_ehydro_data(data_dir:Path, start_date:str, end_date:str, district_s
         Number of parallel workers for zip extraction (default: 1)
     """
 
-    where_parts = []
-    id_only_parts = []
-
-    if start_date:
-        where_parts.append(f"surveydatestart >= '{start_date}'")
-    if end_date:
-        where_parts.append(f"surveydatestart <= '{end_date}'")
     if district_symbol:
-        where_parts.append(f"usacedistrictcode = '{district_symbol}'")
-        id_only_parts.append(f"usacedistrictcode = '{district_symbol}'")
         data_dir = data_dir / district_symbol
-
-    survey_candidates = [None]
-    if surveyID:
-        parts = surveyID.split("_")
-        # Right-to-left trimming: keep dropping trailing segments until a hit.
-        survey_candidates = ["_".join(parts[:i]) for i in range(len(parts), 0, -1)]
-
-    if channel_area:
-        where_parts.append(f"channelareaidfk = '{channel_area}'")
-        id_only_parts.append(f"channelareaidfk = '{channel_area}'")
-
-    where_clause = " AND ".join(where_parts)
-    id_only_clause = " AND ".join(id_only_parts) if id_only_parts else None
-
-    def _query_with_optional_survey(base_parts, candidates, query_label):
-        last_error = None
-        attempted_queries = set()
-
-        for candidate in candidates:
-            survey_filters = [None]
-            if candidate:
-                # Try exact first, then prefix match for variable suffix tokens.
-                safe_candidate = candidate.replace("'", "''")
-                survey_filters = [
-                    f"surveyjobidpk = '{safe_candidate}'",
-                    f"surveyjobidpk LIKE '{safe_candidate}%'",
-                ]
-
-            for survey_filter in survey_filters:
-                query_parts = list(base_parts)
-                if survey_filter:
-                    query_parts.append(survey_filter)
-                query = " AND ".join(query_parts)
-
-                if query in attempted_queries:
-                    continue
-                attempted_queries.add(query)
-
-                print(f"{query_label}: {query}")
-                try:
-                    result = ehydro.bysql(query)
-                    if candidate and candidate != surveyID:
-                        print(f"Matched with trimmed SURVEY_ID: {candidate}")
-                    if survey_filter and " LIKE " in survey_filter:
-                        print("Matched via LIKE-prefix fallback on surveyjobidpk.")
-                    return result
-                except ZeroMatchedError as ex:
-                    last_error = ex
-                    continue
-
-        if last_error is not None:
-            raise last_error
-
-        return ehydro.bysql(" AND ".join(base_parts))
     
     data_dir.mkdir(parents=True, exist_ok=True)
     
-    ehydro = EHydro(data_type="outlines", cache_dir=data_dir)
+    client = ArcGISRESTful(
+        "https://services7.arcgis.com/n1YM8pTrFmm7L4hs/arcgis/rest/services/eHydro_Survey_Data/FeatureServer",
+        0, outformat="json", crs=4326,
+    )
+    def _bysql(query):
+        oids = client.oids_bysql(query)
+        if not oids:
+            raise ZeroMatchedError()
+        return geoutils.json2geodf(client.get_features(oids), 4326, 4326)
+    ehydro = SimpleNamespace(bysql=_bysql)
 
     date_base_parts = [
-        f"surveydatestart >= '{start_date}'",
-        f"surveydatestart <= '{end_date}'",
+        f"surveydatestart >= DATE '{start_date}'",
+        f"surveydatestart <= DATE '{end_date}'",
     ]
     if district_symbol:
         date_base_parts.append(f"usacedistrictcode = '{district_symbol}'")
     if channel_area:
         date_base_parts.append(f"channelareaidfk = '{channel_area}'")
+    if surveyID:
+        date_base_parts.append(f"surveyjobidpk LIKE '{surveyID}%'")
 
-    id_base_parts = []
-    if district_symbol:
-        id_base_parts.append(f"usacedistrictcode = '{district_symbol}'")
-    if channel_area:
-        id_base_parts.append(f"channelareaidfk = '{channel_area}'")
-
-    try:
-        topobathy = _query_with_optional_survey(date_base_parts, survey_candidates, "Primary eHydro query")
-    except ZeroMatchedError:
-        # Date can be offset from the SURVEY_ID token date. Retry without date.
-        if surveyID:
-            print("No matches for date-constrained queries; retrying without date filters.")
-            topobathy = _query_with_optional_survey(id_base_parts, survey_candidates, "Fallback eHydro query")
-        else:
-            raise
+    query = " AND ".join(date_base_parts)
+    topobathy = ehydro.bysql(query)
 
     topobathy.to_parquet(data_dir / 'ehydro.parquet')
     print(f'eHydro survey data saved locally to {data_dir}')
     print(f'Survey metadata saved to {data_dir / "ehydro.parquet"}')
+
+    urls = topobathy['sourcedatalocation'].dropna().unique().tolist()
+    print(f'Downloading {len(urls)} survey files...')
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        list(executor.map(lambda u: download_single_zip(u, data_dir), urls))
 
     # Parallel zip extraction for speed
     zip_files = list(data_dir.glob('*.ZIP')) + list(data_dir.glob('*.zip'))
@@ -162,6 +126,7 @@ def retrieve_ehydro_data(data_dir:Path, start_date:str, end_date:str, district_s
         print(f'Successfully extracted {extracted}/{len(zip_files)} files')
 
     return topobathy
+    # return geoutils.json2geodf(client.get_features(oids), 4326, 4326)
 
 def calculate_survey_characteristics(x, y, z):
     """
@@ -253,9 +218,9 @@ def decimate_survey_points(survey, tgt_num_pts, reduction_method='median',
         else:
             points = gpd.read_file(survey, layer='SurveyPoint')
         
-    x_raw = points.xLocation.values
-    y_raw = points.yLocation.values
-    z_raw = points.Z_use.values
+    x_raw = points.X_ft.values
+    y_raw = points.Y_ft.values
+    z_raw = points.Elevation_ft.values * -1
     
     # QC filtering (always applied if nav_safe, removes obvious errors)
     if reduction_method == 'nav_safe':

@@ -16,59 +16,35 @@ from shapely.vectorized import contains
 import rasterio
 from rasterio.transform import from_origin
 import json
+from rasterio.mask import mask
+from shapely.geometry import box
 import gc
 import multiprocessing
 from joblib import Parallel, delayed
-from scipy.spatial import Delaunay
 
 class isoAutoKrige:
     """Generate Kriging bathymetric surfaces with AIC-based model selection."""
     
     __slots__ = [
-        'surveyId',
-        'survey_path',
-        'survey_boundary',
-        'echosounder', 
-        'grid_res',
-        'vario_models', 
-        'vario_weights',
-        'detrend', 
-        'plot_outputs', 
-        'coordinates',
-        'bathymetry', 
-        'max_lag', 
-        'fit_model', 
-        'fit_aic', 
-        'chunked_kriging',
-        'ranking', 
-        'trendSurface', 
-        'residuals', 
-        'krige_model', 
-        'x_grid',
-        'y_grid', 
-        'krige_pred', 
-        'krige_var', 
-        'transform', 
-        'cv_metadata',
-        'depth_tif_path', 
-        'uncertainty_tif_path', 
-        'meta', 
-        'n_jobs', 
-        'spline_damping',
+        'tgt_survey', 'survey_boundary', 'grid_res', 'tgt_num_pts',
+        'survey_path', 'vario_models', 'detrend', 'plot_outputs', 'coordinates',
+        'bathymetry', 'max_lag', 'fit_model', 'fit_aic', 'chunked_kriging',
+        'ranking', 'trendSurface', 'residuals', 'krige_model', 'x_grid',
+        'y_grid', 'krige_pred', 'krige_var', 'transform', 'cv_metadata',
+        'depth_tif_path', 'uncertainty_tif_path', 'meta', 'n_jobs', 'spline_damping',
         '_crs', '_fold_spacing', '_ill_conditioned', '_ill_conditioned_count', '_total_chunks',
-        '_empirical_bins', '_empirical_gamma', '_vario_estimator'
+        '_empirical_bins', '_empirical_gamma', '_vario_estimator', "vario_weights", "echosounder"
     ]
     
-    def __init__(self, surveyId, survey_path, survey_boundary, vario_models, x, y, z, echosounder,
+    def __init__(self, tgt_survey, vario_models, x, y, z, survey_path, survey_boundary, echosounder,
                  spline_damping = 1e-1, vario_estimator = 'cressie', chunked_kriging = True,
-                 grid_res=10.0, detrend=False, plot_outputs=False, n_jobs=-1):
+                 grid_res=10.0, tgt_num_pts=5000, detrend=False, plot_outputs=False, n_jobs=-1):
         
-        self.surveyId = surveyId
-        self.survey_path = survey_path
+        self.tgt_survey = Path(tgt_survey)
         self.survey_boundary = survey_boundary
         self._crs = self.survey_boundary.crs  # Cache CRS
-        self.echosounder = echosounder
         self.grid_res = grid_res
+        self.tgt_num_pts = tgt_num_pts
         self.vario_models = vario_models
         self.detrend = detrend
         self.plot_outputs = plot_outputs
@@ -79,6 +55,8 @@ class isoAutoKrige:
         self.spline_damping = spline_damping
         self._vario_estimator = vario_estimator
         self.chunked_kriging = chunked_kriging
+        self.echosounder = echosounder
+        self.survey_path = survey_path
         
         # Store as float32 to reduce memory by 50%
         self.coordinates = (np.asarray(x, dtype=np.float32), np.asarray(y, dtype=np.float32))
@@ -107,55 +85,61 @@ class isoAutoKrige:
         self._empirical_gamma = None
 
     def _spline_detrend(self):
-        """Fit spline for detrending using Verde.Spline."""
-        
-        self.trendSurface = vd.Spline(damping = self.spline_damping)
+        """Fit spline for detrending using Verde.Chain."""
+        # TODO: maybe try out vd.Trend(degree=2) instead of a spline?
+
+        self.trendSurface = vd.Chain([
+            ("reduce", vd.BlockMean(spacing=100)),   # 100ft spacing reuction for fitting the spline
+            ("spline", vd.Spline(damping=self.spline_damping)),
+            ])
+                
+        # self.trendSurface = vd.Trend(degree = 2)
         self.trendSurface.fit(self.coordinates, self.bathymetry)
         self.residuals = self.bathymetry - self.trendSurface.predict(self.coordinates)
 
     def _calculate_aic(self, model, bin_center, gamma):
-        """
-        Calculate AIC for a fitted variogram model.
-        
-        Parameters
-        ----------
-        model : gstools.CovModel
-            Fitted variogram model
-        bin_center : array
-            Bin centers from empirical variogram
-        gamma : array
-            Empirical variogram values
-        
-        Returns
-        -------
-        float
-            AIC score (lower is better)
-        """
-        # Get predicted values from the fitted model
-        gamma_pred = model.variogram(bin_center)
-        
-        # Calculate residuals
-        residuals = gamma - gamma_pred
-        
-        # Number of data points
-        n = len(bin_center)
-
-        wrss = np.sum(self.vario_weights * residuals**2)
-        if wrss < 1e-10:
-            wrss = 1e-10
-
-        k = 3
-        model_name = model.__class__.__name__.lower()
-        if 'stable' in model_name:
-            k = 4
-        elif 'matern' in model_name:
-            k = 4
-
-        aic = n * np.log(wrss / n) + 2 * k
-        if n / k < 40:
-            aic = aic + (2 * k * (k + 1)) / (n - k - 1)
-
-        return aic
+            """
+            Calculate AIC for a fitted variogram model.
+            
+            Parameters
+            ----------
+            model : gstools.CovModel
+                Fitted variogram model
+            bin_center : array
+                Bin centers from empirical variogram
+            gamma : array
+                Empirical variogram values
+            
+            Returns
+            -------
+            float
+                AIC score (lower is better)
+            """
+            # Get predicted values from the fitted model
+            gamma_pred = model.variogram(bin_center)
+            
+            # Calculate residuals
+            residuals = gamma - gamma_pred
+            
+            # Number of data points
+            n = len(bin_center)
+    
+            wrss = np.sum(self.vario_weights * residuals**2)
+            if wrss < 1e-10:
+                wrss = 1e-10
+    
+            k = 3
+            model_name = model.__class__.__name__.lower()
+            if 'stable' in model_name:
+                k = 4
+            elif 'matern' in model_name:
+                k = 4
+    
+            aic = n * np.log(wrss / n) + 2 * k
+            if n / k < 40:
+                aic = aic + (2 * k * (k + 1)) / (n - k - 1)
+    
+            return aic
 
     def _fit_variograms(self, max_evals=500000):
         """Fit variogram models and select best based on AIC."""
@@ -175,7 +159,6 @@ class isoAutoKrige:
         # Store for plotting
         self._empirical_bins = bin_center
         self._empirical_gamma = gamma
-        
         vario_scores = {}
         best_aic, best_model = np.inf, None
         
@@ -281,18 +264,19 @@ class isoAutoKrige:
             'ill_conditioned': ill_conditioned
         }
 
-    def _krige_in_chunks(self, chunk_size=500, n_neighbors=100):    #, overlap=25
+    def _krige_in_chunks(self, chunk_size=500, n_neighbors=48):    #, overlap=25
         """Chunked kriging with overlap for edge effects (parallelized)."""
         data = self.residuals if self.detrend else self.bathymetry
 
         self.krige_model = OrdinaryKriging(
             self.coordinates[0], self.coordinates[1], data,
             variogram_model=self.fit_model,
-            coordinates_type = 'euclidean'
+            coordinates_type = 'euclidean',
+            exact_values = False,
+            psuedo_inv=True
         )
-        practical_range = self._practical_range(self.fit_model)
-        overlap = int(np.ceil(2.0 * practical_range / self.grid_res))
         # overlap = int(np.ceil(2.0 * self.fit_model.len_scale / self.grid_res))
+        oveerlap = 0
         # Pre-compute bounds
         x_min, x_max = float(self.coordinates[0].min()), float(self.coordinates[0].max())
         y_min, y_max = float(self.coordinates[1].min()), float(self.coordinates[1].max())
@@ -316,16 +300,7 @@ class isoAutoKrige:
         ss_final = np.full((ny, nx), np.nan, dtype=np.float32)
 
         xx_full, yy_full = np.meshgrid(self.x_grid, self.y_grid)
-        # xx_full, yy_full = np.meshgrid(self.x_grid, self.y_grid[::-1])
-        polygon_mask = contains(polygon, xx_full, yy_full)
-
-        delaunay_hull = Delaunay(np.column_stack(self.coordinates))
-
-        grid_points = np.column_stack((xx_full.ravel(), yy_full.ravel()))
-        delaunay_flat_mask = delaunay_hull.find_simplex(grid_points) >= 0
-        delaunay_mask = delaunay_flat_mask.reshape(xx_full.shape)
-
-        full_mask = delaunay_mask & polygon_mask
+        full_mask = contains(polygon, xx_full, yy_full)
 
         # Pre-compute trend if detrending
         trend_full = None
@@ -428,16 +403,7 @@ class isoAutoKrige:
         ss_final = np.full((ny, nx), np.nan, dtype=np.float32)
 
         xx_full, yy_full = np.meshgrid(self.x_grid, self.y_grid)
-        # xx_full, yy_full = np.meshgrid(self.x_grid, self.y_grid[::-1])
-        polygon_mask = contains(polygon, xx_full, yy_full)
-
-        delaunay_hull = Delaunay(np.column_stack(self.coordinates))
-
-        grid_points = np.column_stack((xx_full.ravel(), yy_full.ravel()))
-        delaunay_flat_mask = delaunay_hull.find_simplex(grid_points) >= 0
-        delaunay_mask = delaunay_flat_mask.reshape(xx_full.shape)
-
-        full_mask = delaunay_mask & polygon_mask
+        full_mask = contains(polygon, xx_full, yy_full)
 
         z_pred, ss_pred = self.krige_model.execute(
             style="masked", xpoints=self.x_grid, ypoints=self.y_grid,
@@ -463,23 +429,15 @@ class isoAutoKrige:
             z_final = z_pred
         ss_final = ss_pred
 
+        # Belt-and-suspenders: enforce the polygon mask on the final grid.
+        # Do NOT use `np.where(z_final == 0, np.nan, ...)`: legitimate
+        # predictions of exactly 0 (common with detrended residuals) would
+        # be wrongly nulled.
         z_final[~full_mask] = np.nan
         ss_final[~full_mask] = np.nan
 
         self.krige_pred = z_final
         self.krige_var = ss_final
-
-    def _practical_range(self, model, pct=0.95, r_max=None):
-        """Distance at which the fitted variogram first reaches pct*sill.
-        Model-agnostic: works regardless of rescale/len_scale semantics."""
-        sill = model.var + model.nugget
-        r_max = r_max or 20 * model.len_scale  # generous search bound
-        r = np.linspace(0, r_max, 5000)
-        gamma = model.variogram(r)
-        idx = np.argmax(gamma >= pct * sill)
-        if gamma[idx] < pct * sill:  # never actually reached it in range
-            return r_max
-        return r[idx]
 
     def _write_output(self, pred_out_path=None, var_out_path=None, nodata_value=-9999.0):
         """Write COG rasters with AIC metadata."""
@@ -505,12 +463,12 @@ class isoAutoKrige:
         
         suffix = "_detrended" if self.detrend else ""
         if pred_out_path is None:
-            self.depth_tif_path = self.survey_path / f"isoKrige_AIC_{self.echosounder}{suffix}_pred.tif"
+            self.depth_tif_path = self.survey_path / f"isoKrige_AIC_{self.echosounder}{suffix}_pred_{self.tgt_num_pts}.tif"
         else:
             self.depth_tif_path = Path(pred_out_path)
         
         if var_out_path is None:
-            self.uncertainty_tif_path = self.survey_path / f"isoKrige_AIC_{self.echosounder}{suffix}_var.tif"
+            self.uncertainty_tif_path = self.survey_path / f"isoKrige_AIC_{self.echosounder}{suffix}_var_{self.tgt_num_pts}.tif"
         else:
             self.uncertainty_tif_path = Path(var_out_path)
 
@@ -641,20 +599,10 @@ class isoAutoKrige:
         # Add horizontal line for nugget
         ax.axhline(y=self.fit_model.nugget, color='orange', linestyle='--', 
                    linewidth=1.5, alpha=0.7, label=f'Nugget: {self.fit_model.nugget:.2f}')
-        
-        practical_range = self._practical_range(self.fit_model)
-        ax.axvline(x=practical_range, color='purple', linestyle='--',
-            linewidth=1.5, alpha=0.7, label=f'Range: {practical_range:.2f}')
-        # Add vertical line for range (effective range)
-        # ax.axvline(x=self.fit_model.len_scale, color='purple', linestyle='--', 
-        #            linewidth=1.5, alpha=0.7, label=f'Range: {self.fit_model.len_scale:.2f}')
 
-        # ax.text(0.98, 0.02, params_text, 
-        #        transform=ax.transAxes,
-        #        verticalalignment='bottom',
-        #        horizontalalignment='right',
-        #        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5),
-        #        fontsize=9)
+        # Add vertical line for range (effective range)
+        ax.axvline(x=self.fit_model.percentile_scale(0.95), color='purple', linestyle='--', 
+                   linewidth=1.5, alpha=0.7, label=f'Range: {self.fit_model.percentile_scale(0.95):.2f}')
 
         ax.set_xlabel('Lag Distance', fontsize=11)
         ax.set_ylabel('Semivariance', fontsize=11)
