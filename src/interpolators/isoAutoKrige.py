@@ -24,6 +24,9 @@ from joblib import Parallel, delayed
 
 class isoAutoKrige:
     """Generate Kriging bathymetric surfaces with AIC-based model selection."""
+    # NOTE: removing the spline options since testing the global polynomial for detrending first
+    # 'spline_damping', self.spline_damping = spline_damping, spline_damping = 1e-1
+
     
     __slots__ = [
         'tgt_survey', 'survey_boundary', 'grid_res', 'tgt_num_pts',
@@ -31,14 +34,14 @@ class isoAutoKrige:
         'bathymetry', 'max_lag', 'fit_model', 'fit_aic', 'chunked_kriging',
         'ranking', 'trendSurface', 'residuals', 'krige_model', 'x_grid',
         'y_grid', 'krige_pred', 'krige_var', 'transform', 'cv_metadata',
-        'depth_tif_path', 'uncertainty_tif_path', 'meta', 'n_jobs', 'spline_damping',
+        'depth_tif_path', 'uncertainty_tif_path', 'meta', 'n_jobs', 
         '_crs', '_fold_spacing', '_ill_conditioned', '_ill_conditioned_count', '_total_chunks',
         '_empirical_bins', '_empirical_gamma', '_vario_estimator', "vario_weights", "echosounder"
     ]
     
-    def __init__(self, tgt_survey, vario_models, x, y, z, survey_path, survey_boundary, echosounder,
-                 spline_damping = 1e-1, vario_estimator = 'cressie', chunked_kriging = True,
-                 grid_res=10.0, tgt_num_pts=5000, detrend=False, plot_outputs=False, n_jobs=-1):
+    def __init__(self, tgt_survey, vario_models, x, y, z, survey_path, survey_boundary, echosounder, 
+                 vario_estimator = 'cressie', chunked_kriging = True, grid_res=10.0, tgt_num_pts=5000, 
+                 detrend=False, plot_outputs=False, n_jobs=-1):
         
         self.tgt_survey = Path(tgt_survey)
         self.survey_boundary = survey_boundary
@@ -52,11 +55,11 @@ class isoAutoKrige:
         self._ill_conditioned = False
         self._ill_conditioned_count = 0
         self._total_chunks = 0
-        self.spline_damping = spline_damping
         self._vario_estimator = vario_estimator
         self.chunked_kriging = chunked_kriging
         self.echosounder = echosounder
         self.survey_path = survey_path
+        # self.trend_polynomial = trend_polynomial
         
         # Store as float32 to reduce memory by 50%
         self.coordinates = (np.asarray(x, dtype=np.float32), np.asarray(y, dtype=np.float32))
@@ -84,16 +87,16 @@ class isoAutoKrige:
         self._empirical_bins = None
         self._empirical_gamma = None
 
-    def _spline_detrend(self):
+    def _detrend(self):
         """Fit spline for detrending using Verde.Chain."""
         # TODO: maybe try out vd.Trend(degree=2) instead of a spline?
 
         self.trendSurface = vd.Chain([
-            ("reduce", vd.BlockMean(spacing=100)),   # 100ft spacing reuction for fitting the spline
-            ("spline", vd.Spline(damping=self.spline_damping)),
+            ("reduce", vd.BlockMean(spacing=30)),   # 100ft spacing reuction for fitting the spline
+            ("spline", vd.Spline(damping=1e-1)),
             ])
                 
-        # self.trendSurface = vd.Trend(degree = 2)
+        # self.trendSurface = vd.Trend(degree = self.trend_polynomial)
         self.trendSurface.fit(self.coordinates, self.bathymetry)
         self.residuals = self.bathymetry - self.trendSurface.predict(self.coordinates)
 
@@ -273,10 +276,10 @@ class isoAutoKrige:
             variogram_model=self.fit_model,
             coordinates_type = 'euclidean',
             exact_values = False,
-            psuedo_inv=True
+            pseudo_inv=True
         )
         # overlap = int(np.ceil(2.0 * self.fit_model.len_scale / self.grid_res))
-        oveerlap = 0
+        overlap = 0
         # Pre-compute bounds
         x_min, x_max = float(self.coordinates[0].min()), float(self.coordinates[0].max())
         y_min, y_max = float(self.coordinates[1].min()), float(self.coordinates[1].max())
@@ -377,7 +380,9 @@ class isoAutoKrige:
         self.krige_model = OrdinaryKriging(
             self.coordinates[0], self.coordinates[1], data,
             variogram_model=self.fit_model,
-            coordinates_type = 'euclidean'
+            coordinates_type = 'euclidean',
+            exact_values = False,
+            pseudo_inv = True
         )
 
         # Pre-compute bounds
@@ -508,7 +513,7 @@ class isoAutoKrige:
         """Run complete Kriging workflow with AIC-based model selection."""
         
         if self.detrend:
-            self._spline_detrend()
+            self._detrend()
         
         self._fit_variograms()
 

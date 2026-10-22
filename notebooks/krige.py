@@ -6,7 +6,7 @@ import geopandas as gpd
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from interpolators.isoAutoKrige import isoAutoKrige
+from interpolators.chunked_kriging import chunkKrige
 
 import numpy as np
 import gstools as gs
@@ -98,7 +98,7 @@ for _, items in pd.read_csv(crs_data).iterrows():
         boundary,
     ]
 
-    print(f"{survey} -> {best['survey_id']} ({best['gdb_file'].name})")
+    # print(f"{survey} -> {best['survey_id']} ({best['gdb_file'].name})")
 
 # establishing params for the surface generation step(s)
 vario_models = {
@@ -127,7 +127,7 @@ plots = False
 # Set number of processors to use based on the number of CPUs your computer has
 # NOTE: this may exceed your system memory depending on how much RAM you have
 # My workstation has 24 CPUs and 96 GB of RAM; I will use between 8 and 12 processors
-processors = 10
+processors = 20
 
 num_pts = 10000
 
@@ -155,8 +155,8 @@ mbes_gdf = gpd.GeoDataFrame(
 OUT_DIR = WORK_DIR / survey
 os.makedirs(OUT_DIR, exist_ok=True)
 
-point_spacings = [4, 20, 100]
-trackline_spacings = [1, 4, 12]
+point_spacings = [2, 4, 6, 8, 10, 25, 50]
+trackline_spacings = [1, 2, 4, 8, 12, 16, 20]
 
 num_transects = max(sbes_gdf['Transect_ID']) - min(sbes_gdf['Transect_ID'])  # how many transects are available in the singlebeam survey?
 
@@ -185,26 +185,31 @@ for itspace, tspace in enumerate(trackline_spacings):  # loop through the differ
 
         if len(singlebeam_this_tspace_pspace.Elevation_ft) > num_pts:
             x, y, z, _, _, _ = processing_help.decimate_survey_points(singlebeam_this_tspace_pspace, tgt_num_pts=num_pts, reduction_method='median')
+
+            if z.mean() > -1:
+                z = z * -1
         else:
             x = singlebeam_this_tspace_pspace.X_ft
             y = singlebeam_this_tspace_pspace.Y_ft
-            z = singlebeam_this_tspace_pspace.Elevation_ft * -1
+            if singlebeam_this_tspace_pspace.Elevation_ft.mean() > -1:
+                z = singlebeam_this_tspace_pspace.Elevation_ft * -1
+            else:
+                z = singlebeam_this_tspace_pspace.Elevation_ft
 
-        for detrend_bool in [False, True]:
-            isoKrige_AIC = isoAutoKrige(
-                tgt_survey = survey,
-                survey_path = OUT_DIR, 
-                survey_boundary=boundary,
-                vario_models=vario_models,
-                x=x, y=y, z=z, 
-                echosounder=f"SBES_{track_spacing}_{pt_spacing}",
-                spline_damping=1e-1,                                            
-                vario_estimator = estimator,            
-                chunked_kriging = True,
-                grid_res=grid_res,
-                detrend=detrend_bool,
-                plot_outputs=plots,
-                n_jobs=processors
-            )
+        
+        isoKrige_AIC = chunkKrige(
+            tgt_survey = survey,
+            survey_path = OUT_DIR, 
+            survey_boundary=boundary,
+            vario_models=vario_models,
+            x=x, y=y, z=z, 
+            echosounder=f"SBES_{track_spacing}_{pt_spacing}",
+            trend_polynomial=2,                                           
+            vario_estimator = estimator,            
+            grid_res=grid_res,
+            detrend=False,
+            plot_outputs=plots,
+            n_jobs=processors
+        )
 
-            krige_path_AIC, _ = isoKrige_AIC.generate()
+        krige_path_AIC, _ = isoKrige_AIC.generate()

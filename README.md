@@ -1,4 +1,4 @@
-# Research Template
+# eHydro Interpolation
 
 **Author:** Clay Caldwell  
 **Contact:** wccaldwe@syr.edu  
@@ -6,112 +6,24 @@
 **Website:** [LinkedIn](https://www.linkedin.com/in/clay-caldwell-9530011a3/)
 
 ## Project Overview
-* problem statement: why does your research matter
-* problem statement: what overarching theoretical, applied, societal, environmental problem does your research address? 
-* challenge statement: why has this problem not been solved before?
-* solution statement: what specific element of the challenge does your research resolve?
-* objective: how will you accomplish this?
-* literature review: focus on foundational or methods papers that closely describe your analytical workflow.
-* research questions: focus on testable hypothesis, even if you're not a frequentist. 
-
+* The USACE defaults to Triangulated Irregular Networks (TIN) for gap-filling of echosounder point clouds to generate bathymetric surfaces within the eHydro national database. TINs have been shown to have reduced accuracy when soundings are sparse, as with singlebeam echosounders.
+* Kriging methods utilize the covariance between soundings for more accurate gap-filling.
+* 30 sets of multibeam surveys have been manually resampled to match the structure of singlebeam surveys at various trackline and along-track sounding spacings to quantify the impact of survey structure on TIN and Kriging interpolation accuracy.
+* RMSE, MAE, and 95th percentile of |Error| are used to report error and compare the two interpolation methods.
+* Statistical tests are used to identify statistically significant difference between the two methods.
 
 ## Data Sources
 
-Describe your study area, and period of interest. Specify whether training data represents a different location/time period than forecast simulations. Detail the temporal and spatial frequency of your process.
+Dataset contains soundings from multibeam exhosounders (MBES) collected from 30 different navigational channels throughout the United States. Each have been manually resampled to resemble the structure of singlebeam echosounder (SBES) surveys (i.e., spaced tracklines with soundings along them). Each of the 30 synthetic SBES datasets has also been sampled at different trackline spacings (e.g., 25, 50, 100, 200, 300, 400 and 500 ft) and different sounding spacings along the tracklines (e.g., 4, 8, 12, 16, 20, 50, and 100 ft). 
 
 ### Published Data Sources
-| Name | Source | Description | Access Method | data DOI/url | metadata DOI/URL| details | data citation |
-|------|--------|-------------|---------------|--------------|-----------------|---------|---------------|
 
-### Data Access Notes
-Many public geospatial data repositories require user authentication to access data. In the methods section, detail which data sources require registraton to access. Link to sign up portals for any listed data sources that require user authentication. In the "How to Reproduce," descripe how to configure automatic access control mechanisms for each data source. 
-
-### Inputs folder
-Any direct data download links can be pasted into the "datalinks.txt" file in the inputs folder. Specify which dataset links can be accessed via the datalinks.txt folder. Note: this should only be used for PDIs: if the url changes, it will break the reproducibility of your workflow.
-
-Detail any datasets that are in your inputs data folder. Note this is only for data that is too small/trivial to be published: **no files greater than 10 MB can be stored in repository**. Examples might include spatial polygons that have undergone geometry simplification for API searches, text-based keys mapping variable names to integer values, etc.
-
-## Methods Summary
-
-**Model Framework:** 
-Describe steps involved in data preprocessing
-
-## Repository Structure
-
-| Folder/File | Description |
-|-------------|-------------|
-| notebooks/ | SE1–SE4 notebooks |
-| inputs/ | minimal input data required, note most data should be stored on OGC/FAIR compliant databases and accessed from stable URLs |
-| ../raw_data/ | data downloaded from stable URLs/PDIs |
-| ../processed_data/ | analysis-ready datasets |
-| model_data/ | Saved model outputs, model configuration files, predictions|
-| figures/ | Figures, tables, graphs, and data-derivatives (e.g. summary statistics) displayed in manuscript text |
-| run_reproducibility.py | Reproducibility wrapper |
-| Dockerfile | Reproducible container |
-| CITATION.cff | Citation metadata, sourced directly from Zenodo |
-
-## How to Reproduce
-
-### Computational requirements
-What operating system, processor type, and processor specifications (RAM, cores, etc).
-
-If GPU processing, specify CUDA version.
-
-### Data access configurations
-Describe in detail any access control mechanisms that need to be configured for an individual user to access data (e.g. tokens, cookies, certificates, URL customization). Provide links to documentation.
-
-### Run the code
-```bash
-pip install -r requirements.txt
-python run_reproducibility.py
-```
-## Results
-
-Display key figures in `/figures` folder, with description:
-
-![Example](figures/example.png)
-
-## Citation
-
-If you use this software, please cite:
-
-**APA format**
-
-Clay Caldwell (2026).
-*AutoBAG* (Version 0.1.0).
-Syracuse University | U.S. Army ERDC-CHL.
-DOI: 
-
-**BibTeX**
-
-```bibtex
-@software autobag,
-  author = Clay Caldwell,
-  title = AutoBAG,
-  year = 2026,
-  version = 0.1.0,
-  doi = ,
-  url = https://github.com/wc-caldwell/WaterDig-AutoBAG
-}
-```
-or
-
-[![DOI](https://zenodo.org/badge/DOI/DOI_PENDING.svg)](DOI_PENDING)
+| Name | Source | Description | Access Method | Data URL | Metadata URL | Details | Data Citation |
+|------|--------|-------------|---------------|----------|--------------|---------|---------------|
+| eHydro | U.S. Army Corps of Engineers | An enterprise geospatial database used to process and disseminate hydrographic survey data for coastal and inland navigation channels. This data is used to inform navigational charts for waterways across the contiguous U.S., Alaska, Hawaii, and American territories. | ArcGIS REST API or Online | [ArcGIS Web Dashboard](https://www.arcgis.com/apps/dashboards/4b8f2ba307684cf597617bf1b6d2f85d) | [ArcGIS REST Database](https://services7.arcgis.com/n1YM8pTrFmm7L4hs/ArcGIS/rest/services/eHydro_Survey_Data/FeatureServer/0) | Data typically provided in state plane coordinates (US Survey Foot) horizontal projection systems. Vertical projection system typically referenced to local mean lowest low water (MLLW). Point clouds and vectorized survey boundaries provided within an ESRI geodatabase. | USACE. (n.d.). eHydro survey data [Dataset]. ArcGIS REST Services Directory. Retrieved from https://services7.arcgis.com/n1YM8pTrFmm7L4hs/ArcGIS/rest/services/eHydro_Survey_Data/FeatureServer/ |
 
 ## License
-
 GPL-3.0
 
-## Contribution Guidelines
-Contributions that improve the quality, clarity, and reproducibility of this project are welcome.
-* Open an issue before making major or result-affecting changes.
-* Keep pull requests focused and clearly describe what changed and why.
-* Follow existing code style and update documentation as needed.
-* Do not modify code or data used to reproduce published results without discussion.
-* Ensure workflows remain reproducible (environment, dependencies, random seeds).
-* Do not commit large or restricted datasets; respect data licenses.
-By contributing, you agree that your work will be released under the project’s license.
-
 ## Notes:
-Focus on graphically rich, interactive elements to communicate your research to diverse stakeholders.
-[Markdown cheatsheet](https://github.com/adam-p/markdown-here/wiki/markdown-cheatsheet) 
+Under development, with USACE ERDC/CHL CHETN to follow.

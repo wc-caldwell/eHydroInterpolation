@@ -30,25 +30,207 @@ PS_20_PHI_20240603_XC_FULL -> PS_20_PHI_20240603_XC (PS_20_PHI_20240603_XC.gdb)
 SJ_01_SJH_20240610_CS_2024_170_01_HF -> SJ_01_SJH_20240610_CS_2024_170_01_HF (SJ_01_SJH_20240610_CS_2024_170_01_HF.gdb)
 TH_03_TBC_20251216_CS_2026038_HF_A -> TH_03_TBC_20251216_CS_2026_038_HF (TH_03_TBC_20251216_CS_2026_038_HF.gdb)
 WW_01_MNA_20201004_CS_ICE -> WW_01_MNA_20201004_CS_ICE (WW_01_MNA_20201004_CS_ICE.gdb)
-CC_05_HLQ_20260205_XC
-Processing 33 chunks using 20 cores...
-[Parallel(n_jobs=20)]: Done   8 out of  33 | elapsed:   18.8s remaining:   58.8s
-[Parallel(n_jobs=20)]: Done  15 out of  33 | elapsed:   26.0s remaining:   31.2s
-[Parallel(n_jobs=20)]: Done  22 out of  33 | elapsed:   32.2s remaining:   16.1s
-[Parallel(n_jobs=20)]: Done  29 out of  33 | elapsed:   36.7s remaining:    5.1s
-[Parallel(n_jobs=20)]: Done  33 out of  33 | elapsed: 217.0min finished
+WW_01_MNA_20201004_CS_ICE
+Processing 3 chunks using 20 cores...
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    1.3s finished
 [Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
-Exported: /mnt/teamgroup/AutoDBM/Public/CC_05_HLQ_20260205_XC/MBES_TIN_bathy.tif
-Processing 33 chunks using 20 cores...
-[Parallel(n_jobs=20)]: Done   8 out of  33 | elapsed:    4.5s remaining:   14.0s
-[Parallel(n_jobs=20)]: Done  15 out of  33 | elapsed:    7.1s remaining:    8.5s
-[Parallel(n_jobs=20)]: Done  22 out of  33 | elapsed:    8.5s remaining:    4.2s
-[Parallel(n_jobs=20)]: Done  29 out of  33 | elapsed: 30.2min remaining:  4.2min
-[Parallel(n_jobs=20)]: Done  33 out of  33 | elapsed: 78.5min finished
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.6s finished
 [Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
-Exported: /mnt/teamgroup/AutoDBM/Public/CC_05_HLQ_20260205_XC/SBES_TIN_bathy.tif
-Processing 33 chunks using 20 cores...
-[Parallel(n_jobs=20)]: Done   8 out of  33 | elapsed:    4.4s remaining:   13.9s
-[Parallel(n_jobs=20)]: Done  15 out of  33 | elapsed:    7.0s remaining:    8.4s
-[Parallel(n_jobs=20)]: Done  22 out of  33 | elapsed:    8.4s remaining:    4.2s
-[Parallel(n_jobs=20)]: Done  29 out of  33 | elapsed: 29.9min remaining:  4.1min
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.6s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.6s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.5s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.5s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.5s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.1s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+[Parallel(n_jobs=20)]: Using backend LokyBackend with 20 concurrent workers.
+[Parallel(n_jobs=20)]: Done   3 out of   3 | elapsed:    0.0s finished
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/MBES_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_25_4_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_25_8_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_25_12_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_25_16_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_25_20_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_25_50_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_25_100_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_50_4_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_50_8_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_50_12_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_50_16_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_50_20_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_50_50_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_50_100_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_100_4_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_100_8_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_100_12_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_100_16_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_100_20_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_100_50_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_100_100_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_200_4_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_200_8_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_200_12_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_200_16_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_200_20_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_200_50_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_200_100_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_300_4_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_300_8_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_300_12_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_300_16_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_300_20_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_300_50_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_300_100_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_400_4_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_400_8_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_400_12_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_400_16_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_400_20_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_400_50_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_400_100_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_500_4_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_500_8_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_500_12_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_500_16_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_500_20_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_500_50_TIN_bathy.tif
+Processing 3 chunks using 20 cores...
+Exported: /mnt/teamgroup/AutoDBM/Public/WW_01_MNA_20201004_CS_ICE/SBES_500_100_TIN_bathy.tif
