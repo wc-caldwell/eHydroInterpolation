@@ -4,9 +4,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 import pandas as pd
 import geopandas as gpd
 from pathlib import Path
-import matplotlib.pyplot as plt
-
-from interpolators.chunked_kriging import chunkKrige
+from interpolators.kriging import Krige
 
 import numpy as np
 import gstools as gs
@@ -127,7 +125,7 @@ plots = False
 # Set number of processors to use based on the number of CPUs your computer has
 # NOTE: this may exceed your system memory depending on how much RAM you have
 # My workstation has 24 CPUs and 96 GB of RAM; I will use between 8 and 12 processors
-processors = 20
+processors = 5
 
 num_pts = 10000
 
@@ -175,7 +173,7 @@ for itspace, tspace in enumerate(trackline_spacings):  # loop through the differ
     mbes_gdf_this_tspace = mbes_gdf[~mbes_gdf['Used_to_create_transect'].isin(transects_to_use)].reset_index(drop=True)
 
     for ipspace, pspace in enumerate(point_spacings):  # loop through the different point spacings
-        pt_spacing = pspace
+        pt_spacing = pspace * 2
 
         along_length_temp = np.array(sbes_gdf_this_tspace['Length_along_transect_ft'])
         along_length_temp = np.round(along_length_temp)  # some of them are decimals??? I have no clue why Arc did that.
@@ -196,15 +194,16 @@ for itspace, tspace in enumerate(trackline_spacings):  # loop through the differ
             else:
                 z = singlebeam_this_tspace_pspace.Elevation_ft
 
-        
-        isoKrige_AIC = chunkKrige(
+        print(f'Number of points = {len(z)}')
+
+        isoKrige = chunkKrige(
             tgt_survey = survey,
             survey_path = OUT_DIR, 
             survey_boundary=boundary,
             vario_models=vario_models,
-            x=x, y=y, z=z, 
+            x=x, y=y, z=z,
             echosounder=f"SBES_{track_spacing}_{pt_spacing}",
-            trend_polynomial=2,                                           
+            chunked_kriging = False,
             vario_estimator = estimator,            
             grid_res=grid_res,
             detrend=False,
@@ -212,4 +211,4 @@ for itspace, tspace in enumerate(trackline_spacings):  # loop through the differ
             n_jobs=processors
         )
 
-        krige_path_AIC, _ = isoKrige_AIC.generate()
+        krige_path, _ = isoKrige.generate()

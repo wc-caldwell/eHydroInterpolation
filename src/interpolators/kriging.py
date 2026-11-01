@@ -23,22 +23,20 @@ import gc
 import multiprocessing
 from joblib import Parallel, delayed
 
-class chunkKrige:
+class Krige:
     """Generate Kriging bathymetric surfaces with pseudo R2-based model selection."""
     # NOTE: removing the spline options since testing the global polynomial for detrending first
     # 'spline_damping', self.spline_damping = spline_damping, spline_damping = 1e-1
 
-    
     __slots__ = [
-        'tgt_survey', 'survey_boundary', 'grid_res', 'survey_path', 'vario_models', 'detrend', 'plot_outputs', 'coordinates', 'bathymetry', 
+        'tgt_survey', 'survey_boundary', 'grid_res', 'survey_path', 'vario_models', 'detrend', 'plot_outputs', 'coordinates', 'bathymetry',
         'max_lag', 'fit_model', 'fit_r2', 'ranking', 'trendSurface', 'residuals', 'krige_model', 'x_grid', 'y_grid', 'krige_pred', 'krige_var', 
-        'transform', 'cv_metadata', 'depth_tif_path', 'uncertainty_tif_path', 'meta', 'n_jobs', '_crs', '_fold_spacing', 
+        'transform', 'cv_metadata', 'depth_tif_path', 'uncertainty_tif_path', 'meta', 'n_jobs', '_crs', '_fold_spacing', 'chunked_kriging',
         '_ill_conditioned', '_ill_conditioned_count', '_total_chunks', '_empirical_bins', '_empirical_gamma', '_vario_estimator', "vario_weights", "echosounder"
     ]
     
-    def __init__(self, tgt_survey, vario_models, x, y, z, survey_path, survey_boundary, echosounder,
-                 trend_polynomial = 2, vario_estimator = 'cressie', grid_res=10.0, 
-                 detrend=False, plot_outputs=False, n_jobs=-1):
+    def __init__(self, tgt_survey, vario_models, x, y, z, survey_path, survey_boundary, echosounder, chunked_kriging = False,
+                 vario_estimator = 'cressie', grid_res=10.0, detrend=False, plot_outputs=False, n_jobs=-1):
         
         self.tgt_survey = Path(tgt_survey)
         self.survey_boundary = survey_boundary
@@ -55,10 +53,10 @@ class chunkKrige:
         self.echosounder = echosounder
         self.survey_path = survey_path
         # self.trend_polynomial = trend_polynomial
+        self.chunked_kriging = chunked_kriging
         
-        # Store as float32 to reduce memory by 50%
-        self.coordinates = (np.asarray(x, dtype=np.float32), np.asarray(y, dtype=np.float32))
-        self.bathymetry = np.asarray(z, dtype=np.float32)
+        self.coordinates = (np.asarray(x, dtype=np.float64), np.asarray(y, dtype=np.float64))
+        self.bathymetry = np.asarray(z, dtype=np.float64)
 
         # Pre-compute range values
         x_range = float(self.coordinates[0].max() - self.coordinates[0].min())
@@ -100,22 +98,21 @@ class chunkKrige:
         bins = gs.variogram.standard_bins(
             pos=self.coordinates, dim=2, latlon=False,
             mesh_type="unstructured", # max_dist=self.max_lag,
-
         )
-        
+
         data = self.residuals if self.detrend else self.bathymetry
         bin_center, gamma, counts = gs.vario_estimate(
             self.coordinates, data, bins, estimator=self._vario_estimator, latlon=False,     # cressie or matheron
-            return_counts = True
+            return_counts = True, #sampling_size = self.tgt_num_pts, sampling_seed = 100
         )
 
         self.vario_weights = counts / (bin_center**2 + 1e-6)
-        
+
         # Store for plotting
         self._empirical_bins = bin_center
         self._empirical_gamma = gamma
         vario_scores = {}
-        best_r2, best_model = 0., None
+        best_r2, best_model = -np.inf, None
         
         for name, model_class in self.vario_models.items():
             model = model_class(dim=2)
@@ -123,19 +120,25 @@ class chunkKrige:
             try:
                 # Fit the model (we don't need R² anymore)
                 _, _, r2 = model.fit_variogram(bin_center, gamma, max_eval=max_evals, weights=self.vario_weights, return_r2 = True)
-                
-                vario_scores[name] = r2
-                
-                # Higher r2 is better
-                if r2 > best_r2:
-                    best_r2, best_model = r2, model
-                    
+            
             except Exception as e:
                 print(f"Warning: Failed to fit {name} model: {e}")
-                vario_scores[name] = 0.
-        
+                r2 = -np.inf
+                
+            vario_scores[name] = r2
+                
+            # Higher r2 is better
+            if np.isfinite(r2) and r2 > best_r2:
+                best_r2, best_model = r2, model
+
         self.fit_model = best_model
         self.fit_r2 = best_r2
+
+        if self.fit_model is not None:
+            min_nugget = 1e-4 * float(np.var(data))
+            if self.fit_model.nugget < min_nugget:
+                self.fit_model.nugget = min_nugget
+
         # Rank by r2 (descending - higher is better)
         self.ranking = sorted(vario_scores.items(), key=lambda x: x[1], reverse=True)
 
@@ -166,6 +169,8 @@ class chunkKrige:
                 mask=~chunk_mask, n_closest_points=n_neighbors, backend="loop"
             )
 
+            # z_pred, ss = self.krige_model.structured([x_chunk, y_chunk])
+
             # Check for ill-conditioning warnings
             for w in caught_warnings:
                 msg = str(w.message).lower()
@@ -192,13 +197,13 @@ class chunkKrige:
         z_slice = z[y_ext_start:y_ext_end, x_ext_start:x_ext_end]
         ss_slice = ss[y_ext_start:y_ext_end, x_ext_start:x_ext_end]
         if np.ma.is_masked(z_slice):
-            z_core = np.ma.filled(z_slice, np.nan).astype(np.float32)
+            z_core = np.ma.filled(z_slice, np.nan).astype(np.float64)
         else:
-            z_core = np.asarray(z_slice, dtype=np.float32)
+            z_core = np.asarray(z_slice, dtype=np.float64)
         if np.ma.is_masked(ss_slice):
-            ss_core = np.ma.filled(ss_slice, np.nan).astype(np.float32)
+            ss_core = np.ma.filled(ss_slice, np.nan).astype(np.float64)
         else:
-            ss_core = np.asarray(ss_slice, dtype=np.float32)
+            ss_core = np.asarray(ss_slice, dtype=np.float64)
 
         # Also return the core region of the polygon mask so the aggregator
         # only writes inside-polygon cells (prevents bleed-out artifacts).
@@ -217,7 +222,7 @@ class chunkKrige:
             'ill_conditioned': ill_conditioned
         }
 
-    def _krige_in_chunks(self, chunk_size=500, n_neighbors=48):    #, overlap=25
+    def _krige_in_chunks(self, chunk_size=500, n_neighbors=32):    
         """Chunked kriging with overlap for edge effects (parallelized)."""
         data = self.residuals if self.detrend else self.bathymetry
 
@@ -225,20 +230,21 @@ class chunkKrige:
             self.coordinates[0], self.coordinates[1], data,
             variogram_model=self.fit_model,
             coordinates_type = 'euclidean',
-            exact_values = False,
+            exact_values = True,
             pseudo_inv=True
-        )
+            )
+        
         # overlap = int(np.ceil(2.0 * self.fit_model.len_scale / self.grid_res))
-        overlap = 0
+        overlap = 0 
         # Pre-compute bounds
         x_min, x_max = float(self.coordinates[0].min()), float(self.coordinates[0].max())
         y_min, y_max = float(self.coordinates[1].min()), float(self.coordinates[1].max())
 
-        # Build grid with consistent bounds (float32)
+        # Build grid with consistent bounds (float64)
         nx = int(np.ceil((x_max - x_min) / self.grid_res)) + 1
         ny = int(np.ceil((y_max - y_min) / self.grid_res)) + 1
-        self.x_grid = np.linspace(x_min, x_min + (nx - 1) * self.grid_res, nx, dtype=np.float32)
-        self.y_grid = np.linspace(y_min, y_min + (ny - 1) * self.grid_res, ny, dtype=np.float32)
+        self.x_grid = np.linspace(x_min, x_min + (nx - 1) * self.grid_res, nx, dtype=np.float64)
+        self.y_grid = np.linspace(y_min, y_min + (ny - 1) * self.grid_res, ny, dtype=np.float64)
 
         self.transform = from_origin(
             x_min - self.grid_res / 2,
@@ -249,8 +255,8 @@ class chunkKrige:
         polygon = self.survey_boundary.geometry.iloc[0]
         nx, ny = len(self.x_grid), len(self.y_grid)
 
-        z_final = np.full((ny, nx), np.nan, dtype=np.float32)
-        ss_final = np.full((ny, nx), np.nan, dtype=np.float32)
+        z_final = np.full((ny, nx), np.nan, dtype=np.float64)
+        ss_final = np.full((ny, nx), np.nan, dtype=np.float64)
 
         xx_full, yy_full = np.meshgrid(self.x_grid, self.y_grid)
         full_mask = contains(polygon, xx_full, yy_full)
@@ -258,7 +264,7 @@ class chunkKrige:
         # Pre-compute trend if detrending
         trend_full = None
         if self.detrend:
-            trend_full = self.trendSurface.predict((xx_full, yy_full)).astype(np.float32)
+            trend_full = self.trendSurface.predict((xx_full, yy_full)).astype(np.float64)
 
         del xx_full, yy_full
 
@@ -294,9 +300,6 @@ class chunkKrige:
             x_size = result['x_size']
             core_mask = result['core_mask']
 
-            # Only write predictions into cells inside the survey polygon.
-            # Cells outside the polygon remain NaN (their initialized value),
-            # which prevents the kriging surface from bleeding past the AOI.
             z_target = z_final[iy:iy + y_size, ix:ix + x_size]
             ss_target = ss_final[iy:iy + y_size, ix:ix + x_size]
             np.copyto(z_target, result['z'], where=core_mask)
@@ -309,8 +312,6 @@ class chunkKrige:
         self._ill_conditioned_count = ill_conditioned_chunks
         self._total_chunks = total_chunks
 
-        # Belt-and-suspenders: force NaN anywhere outside the polygon, in
-        # case a chunk's local mask differed from the global mask at all.
         z_final[~full_mask] = np.nan
         ss_final[~full_mask] = np.nan
 
@@ -318,23 +319,94 @@ class chunkKrige:
             del trend_full
         del full_mask
 
-        # Assign directly. Do NOT use `np.where(z_final == 0, np.nan, ...)`:
-        # legitimate predictions of exactly 0 (common with detrended residuals)
-        # would be wrongly nulled.
+        self.krige_pred = z_final
+        self.krige_var = ss_final
+
+    def _krige(self):
+        data = self.residuals if self.detrend else self.bathymetry
+
+        # self.krige_model = OrdinaryKriging(
+        #     self.coordinates[0], self.coordinates[1], data,
+        #     variogram_model=self.fit_model,
+        #     coordinates_type = 'euclidean',
+        #     exact_values = False,
+        #     pseudo_inv = True
+        # )
+
+        self.krige_model = gs.krige.Ordinary(
+            model=self.fit_model,
+            cond_pos=self.coordinates,
+            cond_val=data,
+            exact=True,
+            pseudo_inv=True,
+            pseudo_inv_type='pinv'     # default -> 'pinv' using SVD, or 'pinvh' using eigenvalues
+            )
+
+        # Pre-compute bounds
+        x_min, x_max = float(self.coordinates[0].min()), float(self.coordinates[0].max())
+        y_min, y_max = float(self.coordinates[1].min()), float(self.coordinates[1].max())
+
+        # Build grid with consistent bounds (float64)
+        nx = int(np.ceil((x_max - x_min) / self.grid_res)) + 1
+        ny = int(np.ceil((y_max - y_min) / self.grid_res)) + 1
+        self.x_grid = np.linspace(x_min, x_min + (nx - 1) * self.grid_res, nx, dtype=np.float64)
+        self.y_grid = np.linspace(y_min, y_min + (ny - 1) * self.grid_res, ny, dtype=np.float64)
+
+        self.transform = from_origin(
+            x_min - self.grid_res / 2,
+            y_max + self.grid_res / 2,
+            self.grid_res, self.grid_res
+        )
+
+        polygon = self.survey_boundary.geometry.iloc[0]
+        nx, ny = len(self.x_grid), len(self.y_grid)
+
+        z_final = np.full((ny, nx), np.nan, dtype=np.float64)
+        ss_final = np.full((ny, nx), np.nan, dtype=np.float64)
+
+        xx_full, yy_full = np.meshgrid(self.x_grid, self.y_grid)
+        full_mask = contains(polygon, xx_full, yy_full)
+
+        # z_pred, ss_pred = self.krige_model.execute(
+        #     style="masked", xpoints=self.x_grid, ypoints=self.y_grid,
+        #     mask=~full_mask, backend="vectorized"
+        # )
+
+        z_pred, ss_pred = self.krige_model.structured([self.x_grid, self.y_grid])
+    
+        if np.ma.is_masked(z_pred):
+            z_pred = np.ma.filled(z_pred, np.nan).astype(np.float64)
+        else:
+            z_pred = np.asarray(z_pred, dtype=np.float64)
+        if np.ma.is_masked(ss_pred):
+            ss_pred = np.ma.filled(ss_pred, np.nan).astype(np.float64)
+        else:
+            ss_pred = np.asarray(ss_pred, dtype=np.float64)
+
+        if self.detrend:
+            trend_full = self.trendSurface.predict((xx_full, yy_full)).astype(np.float64)
+            z_final = z_pred + trend_full
+        else:
+            z_final = z_pred
+        ss_final = ss_pred
+
+        z_final[~full_mask] = np.nan
+        ss_final[~full_mask] = np.nan
+
         self.krige_pred = z_final
         self.krige_var = ss_final
 
     def _write_output(self, pred_out_path=None, var_out_path=None, nodata_value=-9999.0):
         """Write COG rasters with pseudo R2 metadata."""
-        z_export = np.flipud(np.nan_to_num(self.krige_pred, nan=nodata_value)).astype(np.float32)
-        ss_export = np.flipud(np.nan_to_num(self.krige_var, nan=nodata_value)).astype(np.float32)
+        z_export = np.flipud(np.nan_to_num(self.krige_pred, nan=nodata_value)).astype(np.float64)
+        ss_export = np.flipud(np.nan_to_num(self.krige_var, nan=nodata_value)).astype(np.float64)
         
         meta = {
             'driver': 'GTiff',
             'height': z_export.shape[0],
             'width': z_export.shape[1],
             'count': 1,
-            'dtype': 'float32',
+            'dtype': 'float64',
             'crs': self._crs,
             'transform': self.transform,
             'nodata': nodata_value,
@@ -397,7 +469,10 @@ class chunkKrige:
         
         self._fit_variograms()
 
-        self._krige_in_chunks()
+        if self.chunked_kriging == True:
+            self._krige_in_chunks()
+        else:
+            self._krige()
 
         if self.plot_outputs == True:
             self.plot_predictions()

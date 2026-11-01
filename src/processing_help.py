@@ -20,6 +20,7 @@ import rasterio
 from rasterio.mask import mask
 import numpy as np
 import pandas as pd
+from scipy.stats import binned_statistic_2d
 
 def download_single_zip(url, data_dir):
     """Download one survey zip into data_dir. Skips files already downloaded."""
@@ -153,8 +154,47 @@ def calculate_survey_characteristics(x, y, z):
 
     return density, depth_cv, anisotropy
 
-def decimate_survey_points(survey, tgt_num_pts, reduction_method='median', 
-                           min_depth=0, max_depth=None, random_seed=1337):
+def sample_survey_points(survey, tgt_num_pts, roughness_cell=None, random_seed=1337):
+    if isinstance(survey, gpd.GeoDataFrame):
+        points = survey
+    else:
+        layer = 'SurveyPoint_HD' if 'SurveyPoint_HD' in fiona.listlayers(survey) else 'SurveyPoint'
+        points = gpd.read_file(survey, layer=layer)
+
+    x_raw = points.X_ft.values
+    y_raw = points.Y_ft.values
+    z_raw = points.Elevation_ft.values * -1
+
+    # 1. Collapse duplicate locations (average z), rounded to 0.01 ft
+    xy_r = np.round(np.column_stack([x_raw, y_raw]), 2)
+    uniq, inv = np.unique(xy_r, axis=0, return_inverse=True)
+    inv = inv.ravel()
+    x_u, y_u = uniq[:, 0], uniq[:, 1]
+    z_u = np.bincount(inv, weights=z_raw) / np.bincount(inv)
+
+    # 2. Roughness = std of z within grid cells
+    if roughness_cell is None:
+        # roughly the spacing the target count would give over the survey extent
+        area = np.ptp(x_u) * np.ptp(y_u)
+        roughness_cell = 2 * np.sqrt(area / tgt_num_pts)
+
+    x_edges = np.arange(x_u.min(), x_u.max() + roughness_cell, roughness_cell)
+    y_edges = np.arange(y_u.min(), y_u.max() + roughness_cell, roughness_cell)
+    std_grid, _, _, binnumber = binned_statistic_2d(
+        x_u, y_u, z_u, statistic='std', bins=[x_edges, y_edges], expand_binnumbers=True
+    )
+    ix = np.clip(binnumber[0] - 1, 0, std_grid.shape[0] - 1)
+    iy = np.clip(binnumber[1] - 1, 0, std_grid.shape[1] - 1)
+    roughness = np.nan_to_num(std_grid[ix, iy], nan=0.1) + 0.01
+
+    # 3. Weighted sample without replacement
+    n = min(tgt_num_pts, len(z_u))
+    rng = np.random.default_rng(random_seed)
+    idx = rng.choice(len(z_u), n, replace=False, p=roughness / roughness.sum())
+
+    return x_u[idx], y_u[idx], z_u[idx], x_raw, y_raw, z_raw
+
+def decimate_survey_points(survey, tgt_num_pts, reduction_method='median', random_seed=1337):
     """
     Decimate survey points to exact target count.
     
@@ -167,13 +207,6 @@ def decimate_survey_points(survey, tgt_num_pts, reduction_method='median',
     reduction_method : str or callable, optional
         Method for block reduction ('median', 'mean', 'min', or 'nav_safe'), 
         default 'median'. Ignored if nav_safe=True.
-    nav_safe : bool, optional
-        If True, uses navigation-safe reduction (QC + shoal-biased minimum),
-        default False
-    min_depth : float, optional
-        Minimum valid depth for QC filtering, default 0
-    max_depth : float, optional
-        Maximum valid depth for QC filtering, default None (no upper limit)
     random_seed : int, optional
         Random seed for reproducibility, default 1337
         
@@ -182,15 +215,6 @@ def decimate_survey_points(survey, tgt_num_pts, reduction_method='median',
     tuple
         (x, y, z, x_raw, y_raw, z_raw) arrays of decimated and raw coordinates
     """
-    
-    def _robust_minimum(values):
-        """Shoal-biased reduction with outlier protection."""
-        valid = values[np.isfinite(values)]
-        if len(valid) == 0:
-            return np.nan
-        # 5th percentile protects against single erroneous shoal spikes
-        # while still preserving real shoal features
-        return np.percentile(valid, 5)
     
     def _find_optimal_spacing(x, y, z, target, reduction):
         """Binary search for optimal spacing."""
@@ -222,29 +246,10 @@ def decimate_survey_points(survey, tgt_num_pts, reduction_method='median',
     y_raw = points.Y_ft.values
     z_raw = points.Elevation_ft.values * -1
     
-    # QC filtering (always applied if nav_safe, removes obvious errors)
-    if reduction_method == 'nav_safe':
-        valid_mask = np.isfinite(z_raw) & (z_raw >= min_depth)
-        if max_depth is not None:
-            valid_mask &= (z_raw <= max_depth)
-        
-        x_qc = x_raw[valid_mask]
-        y_qc = y_raw[valid_mask]
-        z_qc = z_raw[valid_mask]
-        
-        n_removed = len(z_raw) - len(z_qc)
-        if n_removed > 0:
-            print(f"QC removed {n_removed} invalid points ({100*n_removed/len(z_raw):.1f}%)")
-        
-        reduction = _robust_minimum
-    else:
-        x_qc, y_qc, z_qc = x_raw, y_raw, z_raw
-        reduction = reduction_method
-    
     # Find optimal spacing for block reduction
-    spacing = _find_optimal_spacing(x_qc, y_qc, z_qc, tgt_num_pts, reduction)
-    reducer = vd.BlockReduce(reduction=reduction, spacing=spacing)
-    (x, y), z = reducer.filter(coordinates=(x_qc, y_qc), data=z_qc)
+    spacing = _find_optimal_spacing(x_raw, y_raw, z_raw, tgt_num_pts, reduction_method)
+    reducer = vd.BlockReduce(reduction=reduction_method, spacing=spacing)
+    (x, y), z = reducer.filter(coordinates=(x_raw, y_raw), data=z_raw)
     
     # Remove duplicates
     coords_combined = np.column_stack([x, y])
@@ -253,13 +258,13 @@ def decimate_survey_points(survey, tgt_num_pts, reduction_method='median',
     
     if len(z) > tgt_num_pts:
         # Calculate roughness for each decimated point
-        tree = cKDTree(np.column_stack([x_qc, y_qc]))
+        tree = cKDTree(np.column_stack([x_raw, y_raw]))
 
         roughness = []
         for x_pt, y_pt in zip(x, y):
             indices = tree.query_ball_point([x_pt, y_pt], r=spacing*2)
             if len(indices) > 3:
-                roughness.append(np.std(z_qc[indices]))
+                roughness.append(np.std(z_raw[indices]))
             else:
                 roughness.append(0.1)
 
@@ -273,10 +278,10 @@ def decimate_survey_points(survey, tgt_num_pts, reduction_method='median',
         n_needed = tgt_num_pts - len(z)
         rng = np.random.default_rng(random_seed)
         # Sample from QC'd data, not raw, to maintain nav safety
-        idx_extra = rng.choice(len(z_qc), n_needed, replace=False)
-        x = np.concatenate([x, x_qc[idx_extra]])
-        y = np.concatenate([y, y_qc[idx_extra]])
-        z = np.concatenate([z, z_qc[idx_extra]])
+        idx_extra = rng.choice(len(z_raw), n_needed, replace=False)
+        x = np.concatenate([x, x_raw[idx_extra]])
+        y = np.concatenate([y, y_raw[idx_extra]])
+        z = np.concatenate([z, z_raw[idx_extra]])
     
     return x, y, z, x_raw, y_raw, z_raw
 
@@ -419,7 +424,7 @@ def validate_bathymetric_surface(surface_tif, x_raw, y_raw, z_raw,
     rmse_samples = []
     nmad_samples = []
     for _ in range(n_bootstrap):
-        sample = np.random.choice(valid_resids, size=subsample_size, replace=True)
+        sample = np.random.choice(valid_resids, size=subsample_size, replace=False)
         rmse_samples.append(np.sqrt(np.mean(sample**2)))
         nmad_samples.append(1.4826 * np.median(abs(sample - np.median(sample))))
     rmse_ci = np.percentile(rmse_samples, [2.5, 97.5])
